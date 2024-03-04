@@ -131,7 +131,7 @@ public class matrixProduct {
         System.out.printf("\nTime passed: %.3f Seconds",(timeEnd - timeStart)/1000.0 );
    }
 
-
+    /* 
     public static void main(String[] args){
         Scanner scanner = new Scanner(System.in);
         System.out.println("Give size of the matrix: ");
@@ -142,4 +142,42 @@ public class matrixProduct {
         onMultLine(sizeMatrix,sizeMatrix);
         OnMultBlock(sizeMatrix,sizeMatrix,bkSize);   
         }
+    */
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        int op, lin, col, blockSize;
+        
+        do {
+            System.out.println("1. Multiplication");
+            System.out.println("2. Line Multiplication");
+            System.out.println("3. Block Multiplication");
+            System.out.println("0. Exit");
+            System.out.print("Selection?: ");
+            op = scanner.nextInt();
+            
+            if (op == 0)
+                break;
+            
+            System.out.print("Dimensions: lins=cols ? ");
+            lin = scanner.nextInt();
+            col = lin;
+            
+            switch (op) {
+                case 1:
+                    onMult(lin, col);
+                    break;
+                case 2:
+                    onMultLine(lin, col);
+                    break;
+                case 3:
+                    System.out.print("Block Size? ");
+                    blockSize = scanner.nextInt();
+                    OnMultBlock(lin, col, blockSize);
+                    break;
+            }
+            
+        } while (op != 0);
+        
+        scanner.close();
+    }
 }
