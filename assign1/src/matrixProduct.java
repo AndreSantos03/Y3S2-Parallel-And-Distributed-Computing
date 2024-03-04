@@ -80,7 +80,7 @@ public class matrixProduct {
             System.out.printf("%d    ",(int)phc[i]);
         }
 
-        System.out.printf("\nTime passed: %.3f Seconds",(timeEnd - timeStart)/1000.0 );
+        System.out.printf("\nTime passed: %.3f Seconds\n",(timeEnd - timeStart)/1000.0 );
     }
 
     public static void OnMultBlock(int m_ar, int m_br, int bkSize){
@@ -111,9 +111,9 @@ public class matrixProduct {
 	 for(int ii = 0; ii < m_ar; ii+= bkSize){
 			for(int kk = 0; kk < m_ar; kk+= bkSize){
 				for(int jj = 0; jj < m_br; jj+= bkSize){
-					for(int i = ii; i < ii*bkSize; i++){
-						for(int k = kk; k < kk*bkSize; k++){
-							for(int j = jj; j < jj*bkSize; j++){
+					for(int i = ii; i < ii+bkSize; i++){
+						for(int k = kk; k < kk+bkSize; k++){
+							for(int j = jj; j < jj+bkSize; j++){
 								phc[i*m_ar+j] += pha[i*m_ar+k] * phb[k*m_br+j];
 							}
 						}
@@ -128,21 +128,10 @@ public class matrixProduct {
             System.out.printf("%d    ",(int)phc[i]);
         }
 
-        System.out.printf("\nTime passed: %.3f Seconds",(timeEnd - timeStart)/1000.0 );
+        System.out.printf("\nTime passed: %.3f Seconds\n",(timeEnd - timeStart)/1000.0 );
    }
 
-    /* 
-    public static void main(String[] args){
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("Give size of the matrix: ");
-        Integer sizeMatrix = Integer.parseInt(scanner.nextLine());
-        System.out.println("Give blockSize: ");
-        Integer bkSize = Integer.parseInt(scanner.nextLine());
-        onMult(sizeMatrix,sizeMatrix);
-        onMultLine(sizeMatrix,sizeMatrix);
-        OnMultBlock(sizeMatrix,sizeMatrix,bkSize);   
-        }
-    */
+
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         int op, lin, col, blockSize;
