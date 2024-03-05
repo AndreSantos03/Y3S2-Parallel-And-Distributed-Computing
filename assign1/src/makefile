@@ -6,8 +6,10 @@ cpp: matrixProduct.cpp
 java: matrixProduct.java
 	javac matrixProduct.java
 
+
 clean:
 	rm -f fileout
 	rm -f *.class
-
+	> dataOutJava.txt
+	> dataOutCPP.txt
 	
