@@ -1,0 +1,16 @@
+Simple Multiplication
+Matrix size:600*col
+Processing Time: 0.267
+######################################
+Simple Multiplication
+Matrix size:1000*col
+Processing Time: 1.431
+######################################
+Simple Multiplication
+Matrix size:1400*col
+Processing Time: 8.04
+######################################
+Simple Multiplication
+Matrix size:1800*col
+Processing Time: 21.365
+######################################

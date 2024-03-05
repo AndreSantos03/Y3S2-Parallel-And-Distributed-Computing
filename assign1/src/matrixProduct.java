@@ -1,7 +1,8 @@
 import java.util.Scanner;
+import java.io.*;
 
 public class matrixProduct {
-    public static void onMult(int m_ar, int m_br) {
+    public static double onMult(int m_ar, int m_br) {
         double[] pha = new double [m_ar * m_ar];
         double[] phb = new double [m_ar * m_ar];
         double[] phc = new double [m_ar * m_ar];
@@ -38,9 +39,10 @@ public class matrixProduct {
         }
 
         System.out.printf("\nTime passed: %.3f Seconds\n",(timeEnd - timeStart)/1000.0 );
+        return (timeEnd - timeStart)/1000.0 ;
     }
     
-    public static void onMultLine(int m_ar, int m_br) {
+    public static double onMultLine(int m_ar, int m_br) {
         double[] pha = new double [m_ar * m_ar];
         double[] phb = new double [m_ar * m_ar];
         double[] phc = new double [m_ar * m_ar];
@@ -81,9 +83,10 @@ public class matrixProduct {
         }
 
         System.out.printf("\nTime passed: %.3f Seconds",(timeEnd - timeStart)/1000.0 );
+        return (timeEnd - timeStart)/1000.0;
     }
 
-    public static void OnMultBlock(int m_ar, int m_br, int bkSize){
+    public static double OnMultBlock(int m_ar, int m_br, int bkSize){
     	double[] pha = new double [m_ar * m_ar];
         double[] phb = new double [m_ar * m_ar];
         double[] phc = new double [m_ar * m_ar];
@@ -129,55 +132,54 @@ public class matrixProduct {
         }
 
         System.out.printf("\nTime passed: %.3f Seconds",(timeEnd - timeStart)/1000.0 );
+        return (timeEnd - timeStart)/1000.0;
    }
 
-    /* 
-    public static void main(String[] args){
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("Give size of the matrix: ");
-        Integer sizeMatrix = Integer.parseInt(scanner.nextLine());
-        System.out.println("Give blockSize: ");
-        Integer bkSize = Integer.parseInt(scanner.nextLine());
-        onMult(sizeMatrix,sizeMatrix);
-        onMultLine(sizeMatrix,sizeMatrix);
-        OnMultBlock(sizeMatrix,sizeMatrix,bkSize);   
-        }
-    */
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        int op, lin, col, blockSize;
         
-        do {
-            System.out.println("1. Multiplication");
-            System.out.println("2. Line Multiplication");
-            System.out.println("3. Block Multiplication");
-            System.out.println("0. Exit");
-            System.out.print("Selection?: ");
-            op = scanner.nextInt();
-            
-            if (op == 0)
+        int op, lin, col, blockSize;
+        double res;
+
+        op = Integer.parseInt(args[0]);
+        lin = Integer.parseInt(args[1]);
+        col = lin;
+        
+        switch (op) {
+            case 1:
+                System.out.println("Simple Multiplication");
+                res = onMult(lin, col);
                 break;
-            
-            System.out.print("Dimensions: lins=cols ? ");
-            lin = scanner.nextInt();
-            col = lin;
-            
+            case 2:
+                System.out.println("Line Multiplication");
+                res = onMultLine(lin, col);
+                    break;
+            case 3:
+                System.out.println("Block Multiplication");
+                blockSize = Integer.parseInt(args[2]);
+                res = OnMultBlock(lin, col, blockSize);
+                break;
+            default:
+                res = 0;
+        }
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(args[3], true))) {
             switch (op) {
                 case 1:
-                    onMult(lin, col);
+                    writer.write("Simple Multiplication\n");
                     break;
                 case 2:
-                    onMultLine(lin, col);
+                    writer.write("Line Multiplication\n");
                     break;
-                case 3:
-                    System.out.print("Block Size? ");
-                    blockSize = scanner.nextInt();
-                    OnMultBlock(lin, col, blockSize);
+                default:
                     break;
             }
+            writer.write("Matrix size:" + lin + "*" + "col\n");
+            writer.write("Processing Time: " + res +"\n");
+            writer.write("######################################\n");
+        } catch (IOException e) {
+            System.out.println("An error occurred while writing to the file.");
+            e.printStackTrace();
+        }
             
-        } while (op != 0);
-        
-        scanner.close();
     }
 }
