@@ -1,0 +1,56 @@
+Simple Multiplication
+Matrix size:600*col
+Processing Time: 0.228
+######################################
+Simple Multiplication
+Matrix size:1000*col
+Processing Time: 1.642
+######################################
+Simple Multiplication
+Matrix size:1400*col
+Processing Time: 3.917
+######################################
+Simple Multiplication
+Matrix size:1800*col
+Processing Time: 18.512
+######################################
+Simple Multiplication
+Matrix size:2200*col
+Processing Time: 39.775
+######################################
+Simple Multiplication
+Matrix size:2600*col
+Processing Time: 70.096
+######################################
+Simple Multiplication
+Matrix size:3000*col
+Processing Time: 114.289
+######################################
+Line Multiplication
+Matrix size:600*col
+Processing Time: 0.14
+######################################
+Line Multiplication
+Matrix size:1000*col
+Processing Time: 0.547
+######################################
+Line Multiplication
+Matrix size:1400*col
+Processing Time: 1.771
+######################################
+Line Multiplication
+Matrix size:1800*col
+Processing Time: 3.869
+######################################
+Line Multiplication
+Matrix size:2200*col
+Processing Time: 7.057
+######################################
+Line Multiplication
+Matrix size:2600*col
+Processing Time: 11.661
+######################################
+Line Multiplication
+Matrix size:3000*col
+Processing Time: 18.904
+######################################
