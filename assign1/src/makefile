@@ -1,10 +1,12 @@
 all: cpp java
 
-cpp: matrixProduct.cpp
-	g++ -O2 $^ -o fileout -lpapi
+cpp: 
+	g++ -O2 matrixProduct.cpp -o fileout -lpapi
+	./fileout
 
-java: matrixProduct.java
+java: 
 	javac matrixProduct.java
+	java matrixProduct
 
 
 clean:
