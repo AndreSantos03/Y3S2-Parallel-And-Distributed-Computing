@@ -6,6 +6,7 @@
 #include <papi.h>
 #include <fstream>
 #include <omp.h>
+#include <vector>
 
 using namespace std;
 
@@ -359,108 +360,164 @@ int main (int argc, char *argv[])
 	ret = PAPI_add_event(EventSet,PAPI_L2_DCM);
 	if (ret != PAPI_OK) cout << "ERROR: PAPI_L2_DCM" << endl;
 
-	op = atoi(argv[1]);
-	ofstream f;
-	f.open(op == 3 ? argv[4] : argv[3], ios::app);
-	lin = atoi(argv[2]); 
-	col = lin;
 
-	// Start counting
-	ret = PAPI_start(EventSet);
-	if (ret != PAPI_OK)
-		cout << "ERROR: Start PAPI" << endl;
-
-	switch (op)
-	{
-	case 1:
-		res = OnMult(lin, col);
-		break;
-	case 2:
-		res = OnMultLine(lin, col);
-		break;
-	case 3:
-		blockSize = atoi(argv[3]);
-		res = OnMultBlock(lin, col, blockSize);
-		break;
-	case 4:
-		OnMultLineParallelOne(lin, col);
-		break;
-	case 5:
-		OnMultLineParallelTwo(lin, col);
-		break;
-	}
-
-	ret = PAPI_stop(EventSet, values);
-	if (ret != PAPI_OK)
-		cout << "ERROR: Stop PAPI" << endl;
-	printf("L1 DCM: %lld \n", values[0]);
-	printf("L2 DCM: %lld \n", values[1]);
-
-
-	/* op=1;
-		do {
+	op=1;
+	do {
 		cout << endl << "1. Multiplication" << endl;
 		cout << "2. Line Multiplication" << endl;
 		cout << "3. Block Multiplication" << endl;
-		cout << "4. Multi Threading Line Multiplication (First Implementation - Collapsed)" << endl;
-		cout << "5. Multi Threading Line Multiplication (Second Implementation - Explicit)" << endl;
+		cout << "4. Multi Threading Line Multiplication First Implementation" << endl;
+		cout << "5. Multi Threading Line Multiplication Second Implementation" << endl;
+		cout << "6. Data File: 1) Multiplication" << endl;
+		cout << "7. Data File: 2) Line Multiplication" << endl;
+		cout << "8. Data File: 3) Bloc Multiplication" << endl;
+
 		cout << "Selection?: ";
 		cin >>op;
-		if (op == 0)
-			break;
-		printf("Dimensions: lins=cols ? ");
-   		cin >> lin;
-   		col = lin;
 
+		if( 0 < op <= 5){
 
-		// Start counting
-		ret = PAPI_start(EventSet);
-		if (ret != PAPI_OK) cout << "ERROR: Start PAPI" << endl;
+			printf("Dimensions: lins=cols ? ");
+			cin >> lin;
+			col = lin;
 
-		switch (op){
-			case 1: 
-				OnMult(lin, col);
-				break;
-			case 2:
-				OnMultLine(lin, col);  
-				break;
-			case 3:
-				cout << "Block Size? ";
-				cin >> blockSize;
-				OnMultBlock(lin, col, blockSize);  
-				break;
-			case 4:
-				OnMultLineParallelCollapsed(lin,col);
-				break;
-			case 5: 
-				OnMultLineParallelExplicit(lin,col);
-				break;
+			ret = PAPI_start(EventSet);
+			if (ret != PAPI_OK) cout << "ERROR: Start PAPI" << endl;
+
+			switch (op){
+				case 1: 
+					OnMult(lin, col);
+					break;
+				case 2:
+					OnMultLine(lin, col);  
+					break;
+				case 3:
+					cout << "Block Size? ";
+					cin >> blockSize;
+					OnMultBlock(lin, col, blockSize);  
+					break;
+				case 4:
+					OnMultLineParallelOne(lin,col);
+					break;
+				case 5: 
+					OnMultLineParallelTwo(lin,col);
+					break;
+			}
+
+			ret = PAPI_stop(EventSet, values);
+			cout << "papi ret:" << ret << endl;
+			if (ret != PAPI_OK) cout << "ERROR: Stop PAPI" << endl;
+			printf("L1 DCM: %lld \n",values[0]);
+			printf("L2 DCM: %lld \n",values[1]);
+
+			ret = PAPI_reset( EventSet );
+			if ( ret != PAPI_OK )
+				std::cout << "FAIL reset" << endl; 
 		}
+		else if (op <= 8) {
+			ofstream f;
 
-  		ret = PAPI_stop(EventSet, values);
-  		if (ret != PAPI_OK) cout << "ERROR: Stop PAPI" << endl;
-  		printf("L1 DCM: %lld \n",values[0]);
-  		printf("L2 DCM: %lld \n",values[1]);
+			cout << "Give a list of Matrix Sizes: (Format:{size1 size2 size3})" << endl;
+			string matrixValuesString;
+			cin >> matrixValuesString;
+			vector<int> matrixSizes;
+			istringstream iss(matrixValuesString);
+			int size;
+			while (iss >> size) {
+				matrixSizes.push_back(size);
+			}
 
-		ret = PAPI_reset( EventSet );
-		if ( ret != PAPI_OK )
-			std::cout << "FAIL reset" << endl; 
+			switch (op) {
+				case 6: {
+					const char* filename = "MultiplicationDataOutput.txt";
+					remove(filename); 
+					f.open(filename, ios::app); 
+					if (!f) {
+						cerr << "Failed to open file for writing!" << endl;
+						return 1; 
+					}
 
+					for (int i = 0; i < matrixSizes.size(); ++i) {
+						int size = matrixSizes[i];
+						cout << "Processing matrix size: " << size << "x" << size << endl;
 
+						string res = OnMult(size, size); 
+						f << "Matrix size: " << size << "*" << size << endl;
+						f << "Processing time: " << res << endl;
+						f << "L1 DCM: " << values[0] << endl;
+						f << "L2 DCM: " << values[1] << endl; 
+					}
 
-	}while (op != 0);
-	*/
+					f.close(); 
+					break;
+				}
+				case 7: {
+					const char* filename = "MultiplicationLineDataOutput.txt";
+					remove(filename); 
+					f.open(filename, ios::app); 
+					if (!f) {
+						cerr << "Failed to open file for writing!" << endl;
+						return 1; 
+					}
 
-	//Write the data
-	f << "Matrix size: " << lin << "*" << col << "\n";
-	if (op==3){
-		f << "Block Size: " << blockSize << "\n";
+					for (int i = 0; i < matrixSizes.size(); ++i) {
+						int size = matrixSizes[i];
+						cout << "Processing matrix size: " << size << "x" << size << endl;
+
+						string res = OnMultLine(size, size); 
+						f << "Matrix size: " << size << "*" << size << endl;
+						f << "Processing time: " << res << endl;
+						f << "L1 DCM: " << values[0] << endl;
+						f << "L2 DCM: " << values[1] << endl; 
+					}
+
+					f.close(); 
+					break;
+				}
+				case 8: {
+					cout << "Give a list of Block Sizes: (Format:{size1 size2 size3})" << endl;
+					string blockValuesString;
+					cin >> blockValuesString;
+					vector<int> blockSizes;
+					istringstream iss(blockValuesString);
+					int size;
+					while (iss >> size) {
+						blockSizes.push_back(size);
+					}
+
+					const char* filename = "MultiplicationBlockDataOutput.txt";
+					remove(filename); 
+					f.open(filename, ios::app); 
+					if (!f) {
+						cerr << "Failed to open file for writing!" << endl;
+						return 1; 
+					}
+
+					for (int i = 0; i < matrixSizes.size(); ++i) {
+						for (int j = 0; j < blockSizes.size(); ++j) {
+							int matrixSize = matrixSizes[i];
+							int blockSize = blockSizes[j];
+							cout << "Processing matrix size: " << matrixSize << "x" << matrixSize << endl;
+							cout << "Processing block size: " << blockSize << endl;
+
+							string res = OnMultBlock(matrixSize, matrixSize, blockSize); 
+							f << "Matrix size: " << matrixSize << "*" << matrixSize << endl;
+							f << "Block size: " << blockSize << endl;
+							f << "Processing time: " << res << endl;
+							f << "L1 DCM: " << values[0] << endl;
+							f << "L2 DCM: " << values[1] << endl; 
+						}
+					}
+
+					f.close(); 
+					break;
+				}
+			}
+		}
 	}
-	f << "Processing time: " << res << "\n";
-	f << "L1 DCM: " << values[0] << "\n";
-	f << "L2 DCM: " << values[1] << "\n";
+	while(op != 0);
 
-	f.close();
+
 
 	ret = PAPI_reset(EventSet);
 	if (ret != PAPI_OK)
