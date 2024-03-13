@@ -82,7 +82,6 @@ string OnMult(int m_ar, int m_br)
 // add code here for line x line matriz multiplication
 string OnMultLine(int m_ar, int m_br)
 {
-	
 	char st[100];
 	double temp;
 	int i, j, k;
@@ -336,7 +335,7 @@ int main (int argc, char *argv[])
 	int op;
 	
 	int EventSet = PAPI_NULL;
-  	long long values[2];
+  	long long values[3];
   	int ret;
 	
 
@@ -349,15 +348,20 @@ int main (int argc, char *argv[])
 		if (ret != PAPI_OK) cout << "ERROR: create eventset" << endl;
 
 
-	ret = PAPI_add_event(EventSet,PAPI_L1_DCM );
-	if (ret != PAPI_OK) cout << "ERROR: PAPI_L1_DCM" << endl;
+	ret = PAPI_add_event(EventSet, PAPI_L1_DCM);
+	if (ret != PAPI_OK) {
+		cout << "ERROR: PAPI_L1_DCM, Error code: " << ret << endl;
+	}
 
-
-	ret = PAPI_add_event(EventSet,PAPI_L2_DCM);
-	if (ret != PAPI_OK) cout << "ERROR: PAPI_L2_DCM" << endl;
+	ret = PAPI_add_event(EventSet, PAPI_L2_DCM);
+	if (ret != PAPI_OK) {
+		cout << "ERROR: PAPI_L2_DCM, Error code: " << ret << endl;
+	}
 
 	ret = PAPI_add_event(EventSet, PAPI_FP_OPS);
-	if (ret != PAPI_OK) cout << "ERROR: PAPI_FP_OPS" << endl;
+	if (ret != PAPI_OK) {
+		cout << "ERROR: PAPI_FP_OPS, Error code: " << ret << endl;
+	}
 
 
 	op=1;
@@ -433,7 +437,6 @@ int main (int argc, char *argv[])
 				matrixSizes.push_back(size);
 			}
 
-					
 			switch (op) {
 				case 6: {
 					const char* filename = "MultiplicationDataOutput.txt";
@@ -447,15 +450,26 @@ int main (int argc, char *argv[])
 					for (int i = 0; i < matrixSizes.size(); ++i) {
 						int size = matrixSizes[i];
 						cout << "Processing matrix size: " << size << "x" << size << endl;
-						PAPI_start(EventSet);
-
-						string res = OnMult(size, size); 
-						PAPI_stop(EventSet, values);
-
-						f <<  size << "," << size << "," << res << "," << values[0] << "," << values[1] << "," << values[2] << endl;
-						PAPI_reset(EventSet);
- 
 						
+						long long start_values[3];
+						PAPI_start(EventSet);
+						string res = OnMult(size, size); 
+						PAPI_stop(EventSet, start_values);
+						
+						long long end_values[3];
+						PAPI_read(EventSet, end_values);
+
+						// Calculate the difference between start and end values
+						long long diff_values[3];
+						for (int j = 0; j < 3; ++j) {
+							diff_values[j] = end_values[j] - start_values[j];
+						}
+
+						f << size << "," << size << "," << res << ",";
+						for (int j = 0; j < 3; ++j) {
+							f << diff_values[j] << ",";
+						}
+						f << endl;
 					}
 
 					f.close(); 
@@ -473,11 +487,10 @@ int main (int argc, char *argv[])
 					for (int i = 0; i < matrixSizes.size(); ++i) {
 						int size = matrixSizes[i];
 						cout << "Processing matrix size: " << size << "x" << size << endl;
-						PAPI_start(EventSet);
+						PAPI_read(EventSet,values);
 						string res = OnMultLine(size, size); 
-						PAPI_stop(EventSet,values);
+						PAPI_read(EventSet,values);
 						f <<  size << "," << size << ","  << res << "," << values[0] << "," << values[1] << "," << values[2] << endl; 
-						PAPI_reset(EventSet);
 					}
 
 					f.close(); 
@@ -514,12 +527,11 @@ int main (int argc, char *argv[])
 							int blockSize = blockSizes[j];
 							cout << "Processing matrix size: " << matrixSize << "x" << matrixSize << endl;
 							cout << "Processing block size: " << blockSize << endl;
-							PAPI_start(EventSet);
+							PAPI_read(EventSet,values);
 							string res = OnMultBlock(matrixSize, matrixSize, blockSize); 
-							PAPI_stop(EventSet,values);
+							PAPI_read(EventSet,values);
 							f <<  matrixSize << "," << matrixSize << "," << blockSize << "," << res << "," << values[0] << "," << values[1] << "," << values[2] << endl;
 
-							PAPI_reset(EventSet);
 						}
 					}
 
@@ -538,11 +550,10 @@ int main (int argc, char *argv[])
 					for (int i = 0; i < matrixSizes.size(); ++i) {
 						int size = matrixSizes[i];
 						cout << "Processing matrix size: " << size << "x" << size << endl;
-						PAPI_start(EventSet);
+						PAPI_read(EventSet,values);
 						string res = OnMultLineParallelOne(size, size); 
-						PAPI_stop(EventSet,values);
+						PAPI_read(EventSet,values);
 						f <<  size << "," << size << "," << res << "," << values[0] << "," << values[1] << "," << values[2] << endl;
-						PAPI_reset(EventSet);
 
 					}
 					f.close();
@@ -560,16 +571,16 @@ int main (int argc, char *argv[])
 					for (int i = 0; i < matrixSizes.size(); ++i) {
 						int size = matrixSizes[i];
 						cout << "Processing matrix size: " << size << "x" << size << endl;
-						PAPI_start(EventSet);
+						PAPI_read(EventSet,values);
 						string res = OnMultLineParallelTwo(size, size); 
-						PAPI_stop(EventSet,values);
+						PAPI_read(EventSet,values);
 						f <<  size << "," << size << "," << res << "," << values[0] << "," << values[1] << "," << values[2] << endl;
-						PAPI_reset(EventSet);
 					}
 					f.close();
 					break;
 				}
 			}
+			PAPI_reset(EventSet);
 		}
 	}
 	while(op != 0);
