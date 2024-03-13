@@ -1,7 +1,7 @@
 all: cpp java
 
 cpp: 
-	g++ -O2 matrixProduct.cpp -o fileout -lpapi
+	g++ -O2 matrixProduct.cpp -o fileout -lpapi -fopenmp
 
 java: 
 	javac matrixProduct.java

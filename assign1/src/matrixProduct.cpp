@@ -5,18 +5,18 @@
 #include <cstdlib>
 #include <papi.h>
 #include <fstream>
+#include <sstream>
 #include <omp.h>
 #include <vector>
+#include <limits>
 
 using namespace std;
 
-#define SYSTEMTIME clock_t
 
  
 string OnMult(int m_ar, int m_br) 
 {
 	
-	SYSTEMTIME Time1, Time2;
 	
 	char st[100];
 	double temp;
@@ -42,7 +42,7 @@ string OnMult(int m_ar, int m_br)
 
 
 
-    Time1 = clock();
+    double Time1 = omp_get_wtime();
 
 	for(i=0; i<m_ar; i++)
 	{	for( j=0; j<m_br; j++)
@@ -56,9 +56,9 @@ string OnMult(int m_ar, int m_br)
 	}
 
 
-    Time2 = clock();
+    double Time2 = omp_get_wtime();
 	//string res;
-	sprintf(st, "Time: %3.3f seconds\n", (double)(Time2 - Time1) / CLOCKS_PER_SEC);
+	sprintf(st, "Time: %3.3f seconds\n", Time2 - Time1);
 	cout << st;
 
 
@@ -75,14 +75,13 @@ string OnMult(int m_ar, int m_br)
     free(phc);
 	
 	//cout << res;
-	return to_string((double)(Time2 - Time1) / CLOCKS_PER_SEC);
+	return to_string((double)(Time2 - Time1) );
 	
 }
 
 // add code here for line x line matriz multiplication
 string OnMultLine(int m_ar, int m_br)
 {
-    SYSTEMTIME Time1, Time2;
 	
 	char st[100];
 	double temp;
@@ -106,7 +105,7 @@ string OnMultLine(int m_ar, int m_br)
 		for(j=0; j<m_br; j++)
 			phc[i*m_br + j] = (double)(0.0);
 
-    Time1 = clock();
+    double Time1 = omp_get_wtime();
 
 	for(i=0; i<m_ar; i++){	
 		for( k=0; k<m_ar; k++){	
@@ -117,9 +116,9 @@ string OnMultLine(int m_ar, int m_br)
 	}
 
 
-    Time2 = clock();
+    double Time2 = omp_get_wtime();
 	string res;  
-	res = sprintf(st, "Time: %3.3f seconds\n", (double)(Time2 - Time1) / CLOCKS_PER_SEC);
+	res = sprintf(st, "Time: %3.3f seconds\n", (double)(Time2 - Time1));
 	cout << st;
 
 	// display 10 elements of the result matrix tto verify correctness
@@ -134,13 +133,12 @@ string OnMultLine(int m_ar, int m_br)
     free(phb);
     free(phc);
     
-	return to_string((double)(Time2 - Time1) / CLOCKS_PER_SEC);
+	return to_string((double)(Time2 - Time1));
 }
 
 // add code here for block x block matriz multiplication
 string OnMultBlock(int m_ar, int m_br, int bkSize)
 {
-    SYSTEMTIME Time1, Time2;
 	
 	char st[100];
 	double temp;
@@ -164,7 +162,7 @@ string OnMultBlock(int m_ar, int m_br, int bkSize)
 		for(j=0; j<m_br; j++)
 			phc[i*m_br + j] = (double)(0.0);
 
-    Time1 = clock();
+    double Time1 = omp_get_wtime();
 
 	for(int ii = 0; ii < m_ar; ii+= bkSize){
 		for(int kk = 0; kk < m_ar; kk+= bkSize){
@@ -179,9 +177,9 @@ string OnMultBlock(int m_ar, int m_br, int bkSize)
 			}
 		}
 	}
-    Time2 = clock();
+    double Time2 = omp_get_wtime();
 	string res;
-	res = sprintf(st, "Time: %3.3f seconds\n", (double)(Time2 - Time1) / CLOCKS_PER_SEC);
+	res = sprintf(st, "Time: %3.3f seconds\n", (double)(Time2 - Time1) );
 	cout << st;
 	cout << res;
 	// display 10 elements of the result matrix tto verify correctness
@@ -195,11 +193,10 @@ string OnMultBlock(int m_ar, int m_br, int bkSize)
     free(pha);
     free(phb);
     free(phc);
-    return to_string((double)(Time2 - Time1) / CLOCKS_PER_SEC);
+    return to_string((double)(Time2 - Time1));
 }
 
 string OnMultLineParallelOne(int m_ar, int m_br) {
-    SYSTEMTIME Time1, Time2;
     
     char st[100];
     double temp;
@@ -223,7 +220,7 @@ string OnMultLineParallelOne(int m_ar, int m_br) {
         for(j = 0; j < m_br; j++)
             phc[i * m_br + j] = (double)(0.0);
 
-    Time1 = clock();
+    double Time1 = omp_get_wtime();
 
     #pragma omp parallel for
     for(i = 0; i < m_ar; i++) {
@@ -234,8 +231,8 @@ string OnMultLineParallelOne(int m_ar, int m_br) {
         }
     }
 
-    Time2 = clock();
-    sprintf(st, "Time: %3.3f seconds\n", (double)(Time2 - Time1) / CLOCKS_PER_SEC);
+    double Time2 = omp_get_wtime();
+    sprintf(st, "Time: %3.3f seconds\n", (double)(Time2 - Time1));
     cout << st;
 
     // Display 10 elements of the result matrix to verify correctness
@@ -250,11 +247,10 @@ string OnMultLineParallelOne(int m_ar, int m_br) {
     free(phb);
     free(phc);
 
-    return to_string((double)(Time2 - Time1) / CLOCKS_PER_SEC);
+    return to_string((double)(Time2 - Time1));
 }
 
 string OnMultLineParallelTwo(int m_ar, int m_br) {
-    SYSTEMTIME Time1, Time2;
     
     char st[100];
     double temp;
@@ -278,9 +274,9 @@ string OnMultLineParallelTwo(int m_ar, int m_br) {
         for(j = 0; j < m_br; j++)
             phc[i * m_br + j] = (double)(0.0);
 
-    Time1 = clock();
+    double Time1 = omp_get_wtime();
 
-#pragma omp parallel
+	#pragma omp parallel
     for(i = 0; i < m_ar; i++) {    
         for(k = 0; k < m_ar; k++) {    
             #pragma omp for
@@ -290,9 +286,9 @@ string OnMultLineParallelTwo(int m_ar, int m_br) {
         }
     }
 
-    Time2 = clock();
+    double Time2 = omp_get_wtime();
     string res;  
-    res = sprintf(st, "Time: %3.3f seconds\n", (double)(Time2 - Time1) / CLOCKS_PER_SEC);
+    res = sprintf(st, "Time: %3.3f seconds\n", (double)(Time2 - Time1));
     cout << st;
 
     // Display 10 elements of the result matrix to verify correctness
@@ -307,7 +303,7 @@ string OnMultLineParallelTwo(int m_ar, int m_br) {
     free(phb);
     free(phc);
     
-    return to_string((double)(Time2 - Time1) / CLOCKS_PER_SEC);
+    return to_string((double)(Time2 - Time1));
 }
 
 
@@ -325,7 +321,7 @@ void init_papi() {
   }
   if (retval < 0) handle_error(retval);
 
-  std::cout << "PAPI Version Number: MAJOR: " << PAPI_VERSION_MAJOR(retval)
+  cout << "PAPI Version Number: MAJOR: " << PAPI_VERSION_MAJOR(retval)
             << " MINOR: " << PAPI_VERSION_MINOR(retval)
             << " REVISION: " << PAPI_VERSION_REVISION(retval) << "\n";
 }
@@ -346,7 +342,7 @@ int main (int argc, char *argv[])
 
 	ret = PAPI_library_init( PAPI_VER_CURRENT );
 	if ( ret != PAPI_VER_CURRENT )
-		std::cout << "FAIL" << endl;
+		cout << "FAIL" << endl;
 
 
 	ret = PAPI_create_eventset(&EventSet);
@@ -360,6 +356,9 @@ int main (int argc, char *argv[])
 	ret = PAPI_add_event(EventSet,PAPI_L2_DCM);
 	if (ret != PAPI_OK) cout << "ERROR: PAPI_L2_DCM" << endl;
 
+	ret = PAPI_add_event(EventSet, PAPI_FP_OPS);
+	if (ret != PAPI_OK) cout << "ERROR: PAPI_FP_OPS" << endl;
+
 
 	op=1;
 	do {
@@ -371,11 +370,14 @@ int main (int argc, char *argv[])
 		cout << "6. Data File: 1) Multiplication" << endl;
 		cout << "7. Data File: 2) Line Multiplication" << endl;
 		cout << "8. Data File: 3) Bloc Multiplication" << endl;
+		cout << "9. Data File: 4) Multi Threading Line Multiplication First Implementation" << endl;
+		cout << "10. Data File: 5) Multi Threading Line Multiplication Second Implementation" << endl;		
+
 
 		cout << "Selection?: ";
 		cin >>op;
 
-		if( 0 < op <= 5){
+		if( 0 < op && op <= 5){
 
 			printf("Dimensions: lins=cols ? ");
 			cin >> lin;
@@ -412,21 +414,26 @@ int main (int argc, char *argv[])
 
 			ret = PAPI_reset( EventSet );
 			if ( ret != PAPI_OK )
-				std::cout << "FAIL reset" << endl; 
+				cout << "FAIL reset" << endl; 
 		}
-		else if (op <= 8) {
+		else if (op <= 10) {
 			ofstream f;
+    		cout << "Give a list of Matrix Sizes: (Format: {size1 size2 size3})" << endl;
+    		cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
-			cout << "Give a list of Matrix Sizes: (Format:{size1 size2 size3})" << endl;
 			string matrixValuesString;
-			cin >> matrixValuesString;
+			getline(cin, matrixValuesString); 
+
 			vector<int> matrixSizes;
-			istringstream iss(matrixValuesString);
+
+			stringstream ss(matrixValuesString); 
 			int size;
-			while (iss >> size) {
+			while (ss >> size) {
+				cout << size << endl;
 				matrixSizes.push_back(size);
 			}
 
+					
 			switch (op) {
 				case 6: {
 					const char* filename = "MultiplicationDataOutput.txt";
@@ -440,12 +447,15 @@ int main (int argc, char *argv[])
 					for (int i = 0; i < matrixSizes.size(); ++i) {
 						int size = matrixSizes[i];
 						cout << "Processing matrix size: " << size << "x" << size << endl;
+						PAPI_start(EventSet);
 
 						string res = OnMult(size, size); 
-						f << "Matrix size: " << size << "*" << size << endl;
-						f << "Processing time: " << res << endl;
-						f << "L1 DCM: " << values[0] << endl;
-						f << "L2 DCM: " << values[1] << endl; 
+						PAPI_stop(EventSet, values);
+
+						f <<  size << "," << size << "," << res << "," << values[0] << "," << values[1] << "," << values[2] << endl;
+						PAPI_reset(EventSet);
+ 
+						
 					}
 
 					f.close(); 
@@ -463,27 +473,32 @@ int main (int argc, char *argv[])
 					for (int i = 0; i < matrixSizes.size(); ++i) {
 						int size = matrixSizes[i];
 						cout << "Processing matrix size: " << size << "x" << size << endl;
-
+						PAPI_start(EventSet);
 						string res = OnMultLine(size, size); 
-						f << "Matrix size: " << size << "*" << size << endl;
-						f << "Processing time: " << res << endl;
-						f << "L1 DCM: " << values[0] << endl;
-						f << "L2 DCM: " << values[1] << endl; 
+						PAPI_stop(EventSet,values);
+						f <<  size << "," << size << ","  << res << "," << values[0] << "," << values[1] << "," << values[2] << endl; 
+						PAPI_reset(EventSet);
 					}
 
 					f.close(); 
 					break;
 				}
 				case 8: {
+
 					cout << "Give a list of Block Sizes: (Format:{size1 size2 size3})" << endl;
+
+					cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
 					string blockValuesString;
-					cin >> blockValuesString;
+					getline(cin,blockValuesString);
 					vector<int> blockSizes;
-					istringstream iss(blockValuesString);
+
+					istringstream iss(blockValuesString); // Use istringstream to process the string
 					int size;
 					while (iss >> size) {
 						blockSizes.push_back(size);
 					}
+
 
 					const char* filename = "MultiplicationBlockDataOutput.txt";
 					remove(filename); 
@@ -499,17 +514,59 @@ int main (int argc, char *argv[])
 							int blockSize = blockSizes[j];
 							cout << "Processing matrix size: " << matrixSize << "x" << matrixSize << endl;
 							cout << "Processing block size: " << blockSize << endl;
-
+							PAPI_start(EventSet);
 							string res = OnMultBlock(matrixSize, matrixSize, blockSize); 
-							f << "Matrix size: " << matrixSize << "*" << matrixSize << endl;
-							f << "Block size: " << blockSize << endl;
-							f << "Processing time: " << res << endl;
-							f << "L1 DCM: " << values[0] << endl;
-							f << "L2 DCM: " << values[1] << endl; 
+							PAPI_stop(EventSet,values);
+							f <<  matrixSize << "," << matrixSize << "," << blockSize << "," << res << "," << values[0] << "," << values[1] << "," << values[2] << endl;
+
+							PAPI_reset(EventSet);
 						}
 					}
 
 					f.close(); 
+					break;
+				}
+				case 9:{
+					const char* filename = "FirstThreadingDataOutput.txt";
+					remove(filename); 
+					f.open(filename, ios::app); 
+					if (!f) {
+						cerr << "Failed to open file for writing!" << endl;
+						return 1; 
+					}
+
+					for (int i = 0; i < matrixSizes.size(); ++i) {
+						int size = matrixSizes[i];
+						cout << "Processing matrix size: " << size << "x" << size << endl;
+						PAPI_start(EventSet);
+						string res = OnMultLineParallelOne(size, size); 
+						PAPI_stop(EventSet,values);
+						f <<  size << "," << size << "," << res << "," << values[0] << "," << values[1] << "," << values[2] << endl;
+						PAPI_reset(EventSet);
+
+					}
+					f.close();
+					break;
+				}
+				case 10:{
+					const char* filename = "SecondThreadingDataOutput.txt";
+					remove(filename); 
+					f.open(filename, ios::app); 
+					if (!f) {
+						cerr << "Failed to open file for writing!" << endl;
+						return 1; 
+					}
+
+					for (int i = 0; i < matrixSizes.size(); ++i) {
+						int size = matrixSizes[i];
+						cout << "Processing matrix size: " << size << "x" << size << endl;
+						PAPI_start(EventSet);
+						string res = OnMultLineParallelTwo(size, size); 
+						PAPI_stop(EventSet,values);
+						f <<  size << "," << size << "," << res << "," << values[0] << "," << values[1] << "," << values[2] << endl;
+						PAPI_reset(EventSet);
+					}
+					f.close();
 					break;
 				}
 			}
@@ -521,18 +578,18 @@ int main (int argc, char *argv[])
 
 	ret = PAPI_reset(EventSet);
 	if (ret != PAPI_OK)
-		std::cout << "FAIL reset" << endl;
+		cout << "FAIL reset" << endl;
 
 	ret = PAPI_remove_event( EventSet, PAPI_L1_DCM );
 	if ( ret != PAPI_OK )
-		std::cout << "FAIL remove event" << endl; 
+		cout << "FAIL remove event" << endl; 
 
 	ret = PAPI_remove_event( EventSet, PAPI_L2_DCM );
 	if ( ret != PAPI_OK )
-		std::cout << "FAIL remove event" << endl; 
+		cout << "FAIL remove event" << endl; 
 
 	ret = PAPI_destroy_eventset( &EventSet );
 	if ( ret != PAPI_OK )
-		std::cout << "FAIL destroy" << endl;
+		cout << "FAIL destroy" << endl;
 
 }
