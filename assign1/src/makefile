@@ -1,15 +1,15 @@
 all: cpp java
 
-cpp: matrixProduct.cpp
-	g++ -O2 $^ -o fileout -lpapi
+cpp: 
+	g++ -O2 matrixProduct.cpp -o fileout -lpapi -fopenmp
 
-java: matrixProduct.java
+java: 
 	javac matrixProduct.java
+	java matrixProduct
 
 
 clean:
 	rm -f fileout
 	rm -f *.class
-	> dataOutJava.txt
-	> dataOutCPP.txt
+
 	
