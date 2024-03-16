@@ -251,58 +251,61 @@ string OnMultLineParallelOne(int m_ar, int m_br) {
 
 string OnMultLineParallelTwo(int m_ar, int m_br) {
     
-    char st[100];
-    double temp;
-    int i, j, k;
+	char st[100];
+	double temp;
+	int i, j, k;
 
-    double *pha, *phb, *phc;
-
+	double *pha, *phb, *phc;
+		
     pha = (double *)malloc((m_ar * m_ar) * sizeof(double));
-    phb = (double *)malloc((m_ar * m_ar) * sizeof(double));
-    phc = (double *)malloc((m_ar * m_ar) * sizeof(double));
+	phb = (double *)malloc((m_ar * m_ar) * sizeof(double));
+	phc = (double *)malloc((m_ar * m_ar) * sizeof(double));
 
-    for(i = 0; i < m_ar; i++)
-        for(j = 0; j < m_ar; j++)
-            pha[i * m_ar + j] = (double)1.0;
+	for(i=0; i<m_ar; i++)
+		for(j=0; j<m_ar; j++)
+			pha[i*m_ar + j] = (double)1.0;
 
-    for(i = 0; i < m_br; i++)
-        for(j = 0; j < m_br; j++)
-            phb[i * m_br + j] = (double)(i + 1);
-    
-    for(i = 0; i < m_br; i++)
-        for(j = 0; j < m_br; j++)
-            phc[i * m_br + j] = (double)(0.0);
+	for(i=0; i<m_br; i++)
+		for(j=0; j<m_br; j++)
+			phb[i*m_br + j] = (double)(i+1);
+	
+	for(i=0; i<m_br; i++)
+		for(j=0; j<m_br; j++)
+			phc[i*m_br + j] = (double)(0.0);
 
     double Time1 = omp_get_wtime();
 
-	#pragma omp parallel
-    for(i = 0; i < m_ar; i++) {    
-        for(k = 0; k < m_ar; k++) {    
-            #pragma omp for
-            for(j = 0; j < m_br; j++) {    
-                phc[i * m_ar + j] += pha[i * m_ar + k] * phb[k * m_br + j];
-            }
-        }
-    }
+	#pragma omp parallel for collapse(2)
+	for(i=0; i<m_ar; i++)
+	{	for( k=0; k<m_ar; k++)
+		{	
+			for( j=0; j<m_br; j++)
+			{	
+				phc[i*m_ar+j] += pha[i*m_ar+k] * phb[k*m_br+j];
+				
+			}
+		}
+	}
+
 
     double Time2 = omp_get_wtime();
-    string res;  
-    res = sprintf(st, "Time: %3.3f seconds\n", (double)(Time2 - Time1));
-    cout << st;
+	string res;  
+	res = sprintf(st, "Time: %3.3f seconds\n", (double)(Time2 - Time1));
+	cout << st;
 
-    // Display 10 elements of the result matrix to verify correctness
-    cout << "Result matrix: " << endl;
-    for(i = 0; i < 1; i++) {
-        for(j = 0; j < min(10, m_br); j++)
-            cout << phc[j] << " ";
-    }
-    cout << endl;
+	// display 10 elements of the result matrix tto verify correctness
+	cout << "Result matrix: " << endl;
+	for(i=0; i<1; i++)
+	{	for(j=0; j<min(10,m_br); j++)
+			cout << phc[j] << " ";
+	}
+	cout << endl;
 
     free(pha);
     free(phb);
     free(phc);
     
-    return to_string((double)(Time2 - Time1));
+	return to_string((double)(Time2 - Time1));
 }
 
 
@@ -328,16 +331,15 @@ void init_papi() {
 
 int main (int argc, char *argv[])
 {
-
 	char c;
 	string res;
 	int lin, col, blockSize;
 	int op;
 	
 	int EventSet = PAPI_NULL;
-  	long long values[3];
+  	long long values[2];
   	int ret;
-	
+
 
 	ret = PAPI_library_init( PAPI_VER_CURRENT );
 	if ( ret != PAPI_VER_CURRENT )
@@ -358,19 +360,11 @@ int main (int argc, char *argv[])
 		cout << "ERROR: PAPI_L2_DCM, Error code: " << ret << endl;
 	}
 
-	ret = PAPI_add_event(EventSet, PAPI_FP_OPS);
-	if (ret != PAPI_OK) {
-		cout << "ERROR: PAPI_FP_OPS, Error code: " << ret << endl;
-	}
 
 
-	op = atoi(argv[1]);
-	ofstream f;
-	f.open(op == 3 ? argv[4] : argv[3], ios::app);
-	lin = atoi(argv[2]); 
-	col = lin;
-	if(argc == 0){
+	if(argc == 1){
 		do {
+
 			cout << endl << "1. Multiplication" << endl;
 			cout << "2. Line Multiplication" << endl;
 			cout << "3. Block Multiplication" << endl;
@@ -415,7 +409,6 @@ int main (int argc, char *argv[])
 
 				printf("L1 DCM: %lld \n",values[0]);
 				printf("L2 DCM: %lld \n",values[1]);
-				printf("FP_OPS: %lld \n", values[2]);
 
 				ret = PAPI_reset( EventSet );
 				if ( ret != PAPI_OK )
@@ -426,9 +419,11 @@ int main (int argc, char *argv[])
 	}
 	else{
 
+
 		op = atoi(argv[1]);
 		ofstream f;
 		f.open(op == 3 ? argv[4] : argv[3], ios::app);
+		cout << argv[4] << endl;
 		lin = atoi(argv[2]); 
 		col = lin;
 
