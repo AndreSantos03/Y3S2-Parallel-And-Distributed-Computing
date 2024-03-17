@@ -101,7 +101,7 @@ def lineGraphs():
     # plt.show()
 
     plt.plot(sizeCpp, timeCpp, marker='o',linestyle='-', color='blue', label='Time C++')
-    plt.plot(sizeJava, timeJava, marker='o' ,linestyle='--', color='red', label='L2 Cache Misses')
+    plt.plot(sizeJava, timeJava, marker='o' ,linestyle='--', color='red', label='Time Java')
 
     plt.xlabel('Size Matrix')
     plt.ylabel('Time (Seconds)')
@@ -354,10 +354,10 @@ def multiThreadingSecond():
     plt.ylabel('MFLOPs (Millions of Floating-Point Operations Per Second)')
 
 
-    plt.title('MFLOPs and Speedup Second Multi Threading Type Line Multiplication')
+    plt.title('MFLOPs  Second Multi Threading Type Line Multiplication')
     plt.legend()
     plt.grid(True) 
 
     plt.show()
 
-multiThreadingFirst()
+multiThreadingSecond()
