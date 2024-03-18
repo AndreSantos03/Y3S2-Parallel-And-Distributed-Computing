@@ -207,17 +207,17 @@ def multiThreadingFirst():
 
 
 
-    plt.plot(size, time, marker='o',linestyle='-', color='blue', label='Execution Time')
+    # plt.plot(size, time, marker='o',linestyle='-', color='blue', label='Execution Time')
 
-    plt.xlabel('Size Matrix')
-    plt.ylabel('Time (seconds)')
+    # plt.xlabel('Size Matrix')
+    # plt.ylabel('Time (seconds)')
 
 
-    plt.title('Execution times First Multi Threading Type Line Multiplication')
-    plt.legend()
-    plt.grid(True) 
+    # plt.title('Execution times First Multi Threading Type Line Multiplication')
+    # plt.legend()
+    # plt.grid(True) 
 
-    plt.show()
+    # plt.show()
 
 
 
@@ -255,17 +255,17 @@ def multiThreadingFirst():
     # print(size)
     # print(time)
 
-    # mFlops = [(2 * (pow(size[i], 3))) / (time[i] * 1000000) for i in range(len(size))]
-    # plt.plot(size, mFlops, marker='o',linestyle='-', color='blue', label='MFLOPs')
-    # plt.xlabel('Size Matrix')
-    # plt.ylabel('MFLOPs (Millions of Floating-Point Operations Per Second)')
+    mFlops = [(2 * (pow(size[i], 3))) / (time[i] * 1000000) for i in range(len(size))]
+    plt.plot(size, mFlops, marker='o',linestyle='-', color='blue', label='MFLOPs')
+    plt.xlabel('Size Matrix')
+    plt.ylabel('MFLOPs (Millions of Floating-Point Operations Per Second)')
 
 
-    # plt.title('MFLOPs and Speedup First Multi Threading Type Line Multiplication')
-    # plt.legend()
-    # plt.grid(True) 
+    plt.title('MFLOPs First Multi Threading Type Line Multiplication')
+    plt.legend()
+    plt.grid(True) 
 
-    # plt.show()
+    plt.show()
 
 
 def multiThreadingSecond():
@@ -360,4 +360,4 @@ def multiThreadingSecond():
 
     plt.show()
 
-multiThreadingSecond()
+multiThreadingFirst()
