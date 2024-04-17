@@ -1,4 +1,4 @@
-package game;
+package Wordle;
 
 import java.net.Socket;
 

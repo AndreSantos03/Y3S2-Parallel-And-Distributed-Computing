@@ -57,7 +57,7 @@ public class Server {
 
     private String chooseWord(Socket player){
         String message = "You're this round captain! Choose a word: ";
-        String responseString;
+        String responseString = "";
 
         Runnable runnable = new Runnable() {
             public void run(){
@@ -69,6 +69,7 @@ public class Server {
             }
         };
         Thread.ofVirtual().start(runnable);
+        return responseString;
     }
 
     private String response(Socket socket){
