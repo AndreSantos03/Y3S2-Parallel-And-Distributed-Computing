@@ -1,16 +1,16 @@
-package Wordle;
 
 import java.net.Socket;
 
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 
 public class Game {
-    private List<Socket> userSockets;
-    private Map<Socket,Integer> scores;
-    private List<Socket> roundWordChosers; // list to iterate through rounds with who's choosing the word
+    private List<Socket> userSockets = new ArrayList<>();
+    private Map<Socket,Integer> scores = new HashMap<>();
+    private List<Socket> roundWordChosers = new ArrayList<>(); // list to iterate through rounds with who's choosing the word
     private Integer currentRound = 0;
     private String currentWord;
 
@@ -70,6 +70,10 @@ public class Game {
 
     public void set_word(String chosenWord){
         currentWord = chosenWord.toUpperCase();
+    }
+
+    public String get_word(){
+        return currentWord;
     }
 
 
