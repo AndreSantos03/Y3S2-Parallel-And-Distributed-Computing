@@ -1,3 +1,4 @@
+package game;
 
 import java.net.Socket;
 
@@ -30,7 +31,7 @@ public class Game {
     String redSquare = redColor + "█" + resetColor;
 
 
-    public Game(int players, List<Socket> userSockets) {
+    public Game( List<Socket> userSockets) {
         this.userSockets = userSockets;
     }
 
@@ -54,13 +55,17 @@ public class Game {
         return scores;
     }
 
-    //returns 0 if the game is over, else returns number of round
+    //returns -1 if the game is over, else returns number of round
     public int newRound(){
         currentRound ++;
         if(currentRound > roundWordChosers.size()){
-            return 0;
+            return -1;
         }
         return currentRound;
+    }
+
+    public Socket get_word_chooser(){
+        return roundWordChosers.get(currentRound);
     }
 
     public void set_word(String chosenWord){
