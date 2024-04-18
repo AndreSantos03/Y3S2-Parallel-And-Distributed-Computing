@@ -1,7 +1,10 @@
 import java.io.*;
+import java.lang.Thread.Builder.OfVirtual;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.locks.ReentrantLock;
 
 
 
@@ -51,23 +54,29 @@ public class Server {
         game = new Game(connectedPlayers);
         game.start(num_rounds);
 
-        //loop through rounds
+                //loop through rounds
         for(int i = 0; i < num_rounds;i++){
             Socket roundLeader = game.get_word_chooser();
             chooseWord(roundLeader);
             List<Socket> guessers = new ArrayList<>(connectedPlayers);
             guessers.remove(roundLeader);
-
+                    
             //loop through attempts
             for(int j = 0; j < max_attempts; j++){
+                var executorService = Executors.newVirtualThreadPerTaskExecutor();
+                //TODO: understand why all the attemps are looped through at once without waiting for anything
                 for(Socket guesser : guessers){
-                    String guess = guessWord(guesser,game.get_word().length());
-                    String guess_result = game.give_guess(guess);
-
-                    System.out.println(guess_result);
+                    System.out.println("goat");
+                    executorService.submit(() -> {
+                        System.out.println("awdwda");
+                        String guess = guessWord(guesser, game.get_word().length());
+                        String guess_result = game.give_guess(guess);
+                        System.out.println(guess_result);
+                        System.out.println(guess);
+                      });
+                    
                 }
             }
-            
         }
     }
 
@@ -81,7 +90,6 @@ public class Server {
                 sendMessage(player,"You can not enter empty a empty word!",false);
             }
             else if (responseString.contains(" ")) {
-                System.out.println("dadwdawd");
                 // Check if the response contains a space
                 sendMessage(player, "Your word cannot contain spaces!", false);
             } 
@@ -91,7 +99,6 @@ public class Server {
             }
             else{        
                 game.set_word(responseString);
-
                 return;
             }
         }
@@ -123,10 +130,10 @@ public class Server {
     private String receiveMessage(Socket socket) {
         try (
             BufferedReader in = new BufferedReader(
-                new InputStreamReader(socket.getInputStream()));
+            new InputStreamReader(socket.getInputStream()));
         ) {
             String inputLine = in.readLine();
-            
+            System.out.println(inputLine);
             if (inputLine != null) {
                 return inputLine;
             } else {

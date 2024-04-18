@@ -28,7 +28,7 @@ public class Player {
             while (true) {
                 // Wait for a message from the server
                 String serverMessage = reader.readLine();
-                System.out.println(serverMessage);
+
                 
                 // Parse the server message to check if writing is allowed
                 String[] parts = serverMessage.split("\\|");
