@@ -79,7 +79,7 @@ public class Game {
 
     public String give_guess(String guess){
         if(guess.toUpperCase().equals(currentWord)){
-            return guess.toUpperCase();
+            return "!W";
         }
 
 

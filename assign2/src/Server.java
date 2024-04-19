@@ -1,7 +1,11 @@
 import java.io.*;
 import java.net.*;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Comparator;
+
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.TimeUnit;
@@ -9,7 +13,6 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.ServerSocketChannel;
-
 
 
 
@@ -67,16 +70,24 @@ public class Server {
                     
             ReentrantLock  guessLock = new ReentrantLock();
             //loop through attempts
-            for (int j = 0; j < 1; j++) {
+            for (int j = 0; j < max_attempts; j++) {
                 // Create a new ExecutorService for each iteration of the outer loop
                 var executorService = Executors.newVirtualThreadPerTaskExecutor();
-            
+                List<SocketChannel> winners = new ArrayList<>();
+
                 for (SocketChannel guesser : guessers) {
                     executorService.submit(() -> {
                         try {
                             guessLock.lock(); // Acquire the lock
                             String guess = guessWord(guesser, game.get_word().length());
                             String guess_result = game.give_guess(guess);
+                            if(guess_result.equals("!W")){
+                                winners.add(guesser);
+                            }
+                            else{
+
+                            }
+
                         } 
                         catch (Exception e) {
                             Thread.currentThread().interrupt();
@@ -92,7 +103,6 @@ public class Server {
                 }
             
                 executorService.shutdown();
-                
                 try {
                     executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
                 } catch (InterruptedException e) {
@@ -100,7 +110,24 @@ public class Server {
                     e.printStackTrace(); 
                     System.exit(1);
                 }
+            
+                if(!winners.isEmpty()){
+                    System.err.println("win win");
+                    game.setRoundResults(winners);
+                    for(var player : connectedPlayers){
+                        if(winners.contains(player)){
+                            send(player,"Congratulations! You guessed the word!",null);
+                        }
+                        else{
+                            send(player,"Someone geussed the word!",null );
+                        }
+                    }
+                    break;
+                }
+
             }
+            sendLeaderboard();
+            
         }
     }
 
@@ -152,6 +179,27 @@ public class Server {
                 return responseString;
             }
         }
+    }
+
+    private void sendLeaderboard() throws Exception{
+        List<Map.Entry<SocketChannel, Integer>> entryList = new ArrayList<>(game.getScores().entrySet());
+
+        entryList.sort(Map.Entry.comparingByValue(Comparator.reverseOrder()));
+
+        StringBuilder leaderboard = new StringBuilder("Leaderboard:\n");
+        int rank = 1;
+        for (Map.Entry<SocketChannel, Integer> entry : entryList) {
+            SocketChannel socket = entry.getKey();
+            Integer score = entry.getValue();
+            leaderboard.append(rank).append(". Socket: ").append(socket).append(", Score: ").append(score).append("\n");
+            rank++;
+        }
+
+        for (Map.Entry<SocketChannel, Integer> entry : entryList) {
+            SocketChannel socket = entry.getKey();
+            String leaderboardString = leaderboard.toString();
+            send(socket, leaderboardString, null);
+        }       
     }
 
     public void send(SocketChannel socket,String message,String token) throws Exception {
