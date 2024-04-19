@@ -1,5 +1,5 @@
 
-import java.net.Socket;
+import java.nio.channels.SocketChannel;
 
 import java.util.List;
 import java.util.Map;
@@ -8,9 +8,9 @@ import java.util.HashMap;
 
 
 public class Game {
-    private List<Socket> userSockets = new ArrayList<>();
-    private Map<Socket,Integer> scores = new HashMap<>();
-    private List<Socket> roundWordChosers = new ArrayList<>(); // list to iterate through rounds with who's choosing the word
+    private List<SocketChannel> userSockets = new ArrayList<>();
+    private Map<SocketChannel,Integer> scores = new HashMap<>();
+    private List<SocketChannel> roundWordChosers = new ArrayList<>(); // list to iterate through rounds with who's choosing the word
     private Integer currentRound = 0;
     private String currentWord;
 
@@ -31,27 +31,27 @@ public class Game {
     String redSquare = redColor + "█" + resetColor;
 
 
-    public Game( List<Socket> userSockets) {
+    public Game( List<SocketChannel> userSockets) {
         this.userSockets = userSockets;
     }
 
     public void start(int num_rounds) {
         //Creates the rounds with who's choosing the words
         for(int i = 0; i < num_rounds; i++){
-            for(Socket player : userSockets){
+            for(SocketChannel player : userSockets){
                 roundWordChosers.add(player);
             }
         }
 
         //initialize scores
-        for(Socket player : userSockets){
+        for(SocketChannel player : userSockets){
             scores.put(player, 0);
         }
 
 
     }    
 
-    public Map<Socket,Integer> getScores(){
+    public Map<SocketChannel,Integer> getScores(){
         return scores;
     }
 
@@ -64,7 +64,7 @@ public class Game {
         return currentRound;
     }
 
-    public Socket get_word_chooser(){
+    public SocketChannel get_word_chooser(){
         return roundWordChosers.get(currentRound);
     }
 
@@ -117,8 +117,8 @@ public class Game {
         return currentWordWithDash + '\n' + squaresWithDash + '\n';
     }
 
-    public void setRoundResults(List<Socket> roundWinners){
-        for(Socket player :roundWinners ){
+    public void setRoundResults(List<SocketChannel> roundWinners){
+        for(SocketChannel player :roundWinners ){
             scores.put(player, scores.get(player) + 1);
         }
     }
