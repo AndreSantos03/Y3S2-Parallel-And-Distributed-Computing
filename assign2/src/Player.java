@@ -6,11 +6,28 @@ import java.nio.ByteBuffer;
 
 
 
+
 public class Player {
 
     private final int port;
     private final String host;
     private SocketChannel socket;
+
+    // ANSI escape code for yellow color
+    String yellowColor = "\u001B[33m";
+    // ANSI escape code for green color
+    String greenColor = "\u001B[32m";
+    // ANSI escape code for red color
+    String redColor = "\u001B[31m";
+    // ANSI escape code for reset color
+    String resetColor = "\u001B[0m";
+
+    // Yellow square
+    String yellowSquare = yellowColor + "█" + resetColor;
+    // Green square
+    String greenSquare = greenColor + "█" + resetColor;
+    // Red square
+    String redSquare = redColor + "█" + resetColor;
 
     public Player(int port, String host){
         this.port = port;
@@ -44,6 +61,14 @@ public class Player {
         ByteBuffer buffer = ByteBuffer.allocate(1024);        
         int bytesRead = socket.read(buffer);    
         String response = new String(buffer.array(), 0, bytesRead);
+
+
+        //replace with the ansi squares
+        response = response
+        .replace("red", redSquare)
+        .replace("green", greenSquare)
+        .replace("yellow", yellowSquare);
+
         if(response.contains("|")){
             String[] parts = response.split("\\|");
             return parts;

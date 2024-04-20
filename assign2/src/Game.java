@@ -14,22 +14,6 @@ public class Game {
     private Integer currentRound = 0;
     private String currentWord;
 
-    // ANSI escape code for yellow color
-    String yellowColor = "\u001B[33m";
-    // ANSI escape code for green color
-    String greenColor = "\u001B[32m";
-    // ANSI escape code for red color
-    String redColor = "\u001B[31m";
-    // ANSI escape code for reset color
-    String resetColor = "\u001B[0m";
-
-    // Yellow square
-    String yellowSquare = yellowColor + "█" + resetColor;
-    // Green square
-    String greenSquare = greenColor + "█" + resetColor;
-    // Red square
-    String redSquare = redColor + "█" + resetColor;
-
 
     public Game( List<SocketChannel> userSockets) {
         this.userSockets = userSockets;
@@ -47,8 +31,6 @@ public class Game {
         for(SocketChannel player : userSockets){
             scores.put(player, 0);
         }
-
-
     }    
 
     public Map<SocketChannel,Integer> getScores(){
@@ -63,7 +45,7 @@ public class Game {
         }
         return currentRound;
     }
-
+    
     public SocketChannel get_word_chooser(){
         return roundWordChosers.get(currentRound);
     }
@@ -95,24 +77,26 @@ public class Game {
             charGuess = Character.toUpperCase(charGuess);
             char charWord = currentWord.charAt(i);
             if(charGuess == charWord){
-                squares += greenSquare;
+                squares += "green ";
                 letterFrequency.put(charWord, letterFrequency.get(charWord) - 1);
             }
             else if(letterFrequency.containsKey(charGuess)){
                 if(letterFrequency.get(charGuess) != 0){
-                    squares += yellowSquare;
+                    squares += "yellow ";
                     letterFrequency.put(charWord, letterFrequency.get(charWord) - 1);
                 }
                 else{
-                    squares += redSquare;
+                    squares += "red ";
                 }
             }
             else{
-                squares += redSquare;
+                squares += "red ";
             }
         }
-        String currentWordWithDash = String.join("-", currentWord.split(""));
-        String squaresWithDash = String.join("-", squares.split(""));
+
+
+        String currentWordWithDash = String.join("-", guess.split(""));
+        String squaresWithDash = String.join("-", squares.split(" "));
 
         return currentWordWithDash + '\n' + squaresWithDash + '\n';
     }

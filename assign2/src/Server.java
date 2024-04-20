@@ -5,49 +5,55 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Comparator;
+import java.util.Set;
 
 import java.util.concurrent.Executors;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.TimeUnit;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.ServerSocketChannel;
+import java.util.concurrent.ConcurrentHashMap;
+
 
 
 
 public class Server {
 
     private List<SocketChannel> connectedPlayers = new ArrayList<>();
-    private Game game;
 
     public static void main(String[] args) {
-        if (args.length < 1) {
-            System.out.println("Usage: java Server <port>");
+        if (args.length < 2) {
+            System.out.println("Usage: java Server <port> <game_player_count>");
             return;
         }
 
         Server server = new Server();
         int port = Integer.parseInt(args[0]);
+        int playersPerGame = Integer.parseInt(args[1]);
 
-        server.simpleConnection(port);        
+        server.simpleConnection(port,playersPerGame);        
         
         // List<Socket> connectedPlayers = simpleConnection(port);
     }
 
-    private void simpleConnection(int port) {
+    private void simpleConnection(int port,int playersPerGame) {
         try (ServerSocketChannel serverSocketChannel = ServerSocketChannel.open()) {
             serverSocketChannel.bind(new InetSocketAddress(port));
             System.out.println("Server is listening on port " + port);
 
             //hardcoded 3 players
-            while (connectedPlayers.size() < 3) {
+            while (connectedPlayers.size() < playersPerGame) {
                 SocketChannel socketChannel = serverSocketChannel.accept();
                 System.out.println("New client connected: " + socketChannel);
                 connectedPlayers.add(socketChannel);
             }
 
-            run_game();
+        // Print information about connected users
+        System.out.println("Starting game with the following connected users:");
+        for (SocketChannel channel : connectedPlayers) {
+            System.out.println("- " + channel.getRemoteAddress());
+        }            run_game(connectedPlayers);
 
         } catch (Exception ex) {
             System.out.println("Server exception: " + ex.getMessage());
@@ -55,32 +61,49 @@ public class Server {
         }
     }
 
-    private void run_game() throws Exception{
-        int num_rounds = 1;//hardcoded for now        
+    private void run_game(List<SocketChannel> players) throws Exception{
+        final Game game = new Game(players);
+        int num_rounds = 4;//hardcoded for now        
         int max_attempts = 6;
-        game = new Game(connectedPlayers);
         game.start(num_rounds);
 
-                //loop through rounds
+
+        
+        //loop through rounds
         for(int i = 0; i < num_rounds;i++){
             SocketChannel roundLeader = game.get_word_chooser();
-            chooseWord(roundLeader);
+            chooseWord(roundLeader,game);
             List<SocketChannel> guessers = new ArrayList<>(connectedPlayers);
             guessers.remove(roundLeader);
                     
             //loop through attempts
             for (int j = 0; j < max_attempts; j++) {
+
+                int turn_number = j + 1;
+
                 // Create a new ExecutorService for each iteration of the outer loop
                 var executorService = Executors.newVirtualThreadPerTaskExecutor();
                 List<SocketChannel> winners = new ArrayList<>();
 
+                // Create a set to keep track of users who have submitted their guesses
+                Set<SocketChannel> completedGuessers = ConcurrentHashMap.newKeySet();
+
+
                 for (SocketChannel guesser : guessers) {
                     executorService.submit(() -> {
                         try {
-                            String guess = guessWord(guesser, game.get_word().length());
+
+                            send(guesser, "Attempt number #" + turn_number + "!", null);
+
+
+                            String guess = guessWord(guesser,roundLeader, game.get_word().length());
                             String guess_result = game.give_guess(guess);
                             if(guess_result.equals("!W")){
                                 winners.add(guesser);
+                                send(guesser, "You guessed the word!", null);
+                            }
+                            else{
+                                send(guesser, guess_result, null);
                             }
                         } 
                         catch (Exception e) {
@@ -88,11 +111,29 @@ public class Server {
                             e.printStackTrace(); 
                             System.exit(1);
                         }
-                    });
+                        finally {
+                            completedGuessers.add(guesser);
+                            // Check if all guessers have submitted their guesses
+                            if (completedGuessers.size() < guessers.size()) {
+                                try {
+                                    send(guesser, "Waiting for other guesses to be submitted...", null);
+                                } 
+                                catch (Exception ex) {
+                                    Thread.currentThread().interrupt(); 
+                                    ex.printStackTrace();
+                                }
+
+                            }
+                        }
+                    });   
                 }
+
+
             
                 executorService.shutdown();
+
                 try {
+                    //awaiting for all the tasks to be finished
                     executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -101,7 +142,6 @@ public class Server {
                 }
             
                 if(!winners.isEmpty()){
-                    System.err.println("win win");
                     game.setRoundResults(winners);
                     for(var player : connectedPlayers){
                         if(winners.contains(player)){
@@ -115,12 +155,14 @@ public class Server {
                 }
 
             }
-            sendLeaderboard();
+
+            game.newRound();
+            sendLeaderboard(game);
             
         }
     }
 
-    private void chooseWord(SocketChannel player) throws Exception{
+    private void chooseWord(SocketChannel player, Game game) throws Exception{
         String message = "You're this round captain! Choose a word: ";
         String responseString = " ";
         while(true){
@@ -139,12 +181,13 @@ public class Server {
             }
             else{        
                 game.set_word(responseString);
+                send(player,"Awaiting for the other users guessess",null);
                 return;
             }
         }
     }
 
-    private String guessWord(SocketChannel player, int wordLength) throws Exception{
+    private String guessWord(SocketChannel player,SocketChannel roundLeader, int wordLength) throws Exception{
         String message = "Try to guess the " + wordLength + " letters word:";
         String responseString = " ";
         while(true){
@@ -165,12 +208,14 @@ public class Server {
                 send(player, "Your word can only contain letters!",null);
             }
             else{        
+                //send message to the host about the guess
+                send(roundLeader, player + " guessed the word " + responseString + "!", null);
                 return responseString;
             }
         }
     }
 
-    private void sendLeaderboard() throws Exception{
+    private void sendLeaderboard(Game game) throws Exception{
         List<Map.Entry<SocketChannel, Integer>> entryList = new ArrayList<>(game.getScores().entrySet());
 
         entryList.sort(Map.Entry.comparingByValue(Comparator.reverseOrder()));
@@ -192,6 +237,7 @@ public class Server {
     }
 
     public void send(SocketChannel socket,String message,String token) throws Exception {
+        
         String sentMessage;
         if(token != null){
             sentMessage = token + "|" + message;
