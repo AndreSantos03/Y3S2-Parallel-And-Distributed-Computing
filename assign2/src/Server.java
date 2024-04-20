@@ -21,9 +21,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Server {
 
     private List<SocketChannel> connectedPlayers = new ArrayList<>();
+    int gameId = 1;
 
     public static void main(String[] args) {
-        if (args.length < 2) {
+        if (args.length < 1) {
             System.out.println("Usage: java Server <port> <game_player_count>");
             return;
         }
@@ -31,36 +32,56 @@ public class Server {
         Server server = new Server();
         int port = Integer.parseInt(args[0]);
         int playersPerGame = Integer.parseInt(args[1]);
-
         server.simpleConnection(port,playersPerGame);        
         
         // List<Socket> connectedPlayers = simpleConnection(port);
     }
 
-    private void simpleConnection(int port,int playersPerGame) {
+    private void simpleConnection(int port, int playersPerGame) {
+        int gameId = 1; // Initialize the game ID counter
+    
         try (ServerSocketChannel serverSocketChannel = ServerSocketChannel.open()) {
             serverSocketChannel.bind(new InetSocketAddress(port));
             System.out.println("Server is listening on port " + port);
-
-            //hardcoded 3 players
-            while (connectedPlayers.size() < playersPerGame) {
+    
+            // Multithreading with virtual threads
+            var executorService = Executors.newVirtualThreadPerTaskExecutor();
+    
+            while (true) {
                 SocketChannel socketChannel = serverSocketChannel.accept();
                 System.out.println("New client connected: " + socketChannel);
                 connectedPlayers.add(socketChannel);
+                
+                if (connectedPlayers.size() >= playersPerGame) {
+                    // Start a new game
+                    List<SocketChannel> gamePlayers = new ArrayList<>(connectedPlayers);
+                    int currentGameId = gameId++; // Assign the current game ID
+
+                    //prints game starting and players
+                    System.out.println("Starting Game #" + currentGameId + " with " + gamePlayers.size() + " players:");
+                    for (SocketChannel player : gamePlayers) {
+                        System.out.println("- Player: " + player.getRemoteAddress());
+                    }    
+                    
+                    //starts a virtual thread for the game
+                    executorService.submit(() -> {
+                        try {
+                            run_game(gamePlayers);
+                            System.out.println("Game #" + currentGameId + " has finished.");
+                        } catch (Exception ex) {
+                            System.out.println("Error in running the game: " + ex.getMessage());
+                            ex.printStackTrace();
+                        }
+                    });
+                    connectedPlayers.clear(); // Clear the list for the next game
+                }
             }
-
-        // Print information about connected users
-        System.out.println("Starting game with the following connected users:");
-        for (SocketChannel channel : connectedPlayers) {
-            System.out.println("- " + channel.getRemoteAddress());
-        }            run_game(connectedPlayers);
-
-        } catch (Exception ex) {
+        } catch (IOException ex) {
             System.out.println("Server exception: " + ex.getMessage());
             ex.printStackTrace();
         }
     }
-
+    
     private void run_game(List<SocketChannel> players) throws Exception{
         final Game game = new Game(players);
         int num_rounds = 4;//hardcoded for now        
