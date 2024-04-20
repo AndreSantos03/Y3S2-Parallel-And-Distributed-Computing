@@ -68,7 +68,6 @@ public class Server {
             List<SocketChannel> guessers = new ArrayList<>(connectedPlayers);
             guessers.remove(roundLeader);
                     
-            ReentrantLock  guessLock = new ReentrantLock();
             //loop through attempts
             for (int j = 0; j < max_attempts; j++) {
                 // Create a new ExecutorService for each iteration of the outer loop
@@ -78,27 +77,17 @@ public class Server {
                 for (SocketChannel guesser : guessers) {
                     executorService.submit(() -> {
                         try {
-                            guessLock.lock(); // Acquire the lock
                             String guess = guessWord(guesser, game.get_word().length());
                             String guess_result = game.give_guess(guess);
                             if(guess_result.equals("!W")){
                                 winners.add(guesser);
                             }
-                            else{
-
-                            }
-
                         } 
                         catch (Exception e) {
                             Thread.currentThread().interrupt();
                             e.printStackTrace(); 
                             System.exit(1);
-
                         }
-                        finally {
-                            guessLock.unlock(); 
-                        }
-            
                     });
                 }
             
