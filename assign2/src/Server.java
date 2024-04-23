@@ -66,6 +66,11 @@ public class Server {
                     //starts a virtual thread for the game
                     executorService.submit(() -> {
                         try {
+                            //warn of started game
+                            for(var player : connectedPlayers ){
+                                send(player,"Game #" + currentGameId + " has started!\n",null);
+                            }
+
                             run_game(gamePlayers);
                             System.out.println("Game #" + currentGameId + " has finished.");
                         } catch (Exception ex) {
@@ -93,10 +98,12 @@ public class Server {
         //loop through rounds
         for(int i = 0; i < num_rounds;i++){
             SocketChannel roundLeader = game.get_word_chooser();
-            chooseWord(roundLeader,game);
-            List<SocketChannel> guessers = new ArrayList<>(connectedPlayers);
+            List<SocketChannel> guessers = new ArrayList<>(players);
             guessers.remove(roundLeader);
-                    
+
+            chooseWord(roundLeader,game,guessers);
+
+
             //loop through attempts
             for (int j = 0; j < max_attempts; j++) {
 
@@ -183,26 +190,31 @@ public class Server {
         }
     }
 
-    private void chooseWord(SocketChannel player, Game game) throws Exception{
+    private void chooseWord(SocketChannel roundLeader, Game game, List<SocketChannel> guessers) throws Exception{
+        //warn guessers who's choosing the word
+        for(var guesser : guessers){
+            send(guesser, roundLeader + " is choosing the word!\n",null);
+        }
+
         String message = "You're this round captain! Choose a word: ";
         String responseString = " ";
         while(true){
-            send(player, message,"REPLY");
-            responseString = receive(player)[1];
+            send(roundLeader, message,"REPLY");
+            responseString = receive(roundLeader)[1];
             if(responseString == null){
-                send(player,"You can not enter empty a empty word!",null);
+                send(roundLeader,"You can not enter empty a empty word!",null);
             }
             else if (responseString.contains(" ")) {
                 // Check if the response contains a space
-                send(player, "Your word cannot contain spaces!", null);
+                send(roundLeader, "Your word cannot contain spaces!", null);
             } 
             else if (!responseString.matches("[a-zA-Z]+")) {
                 // Check if the response contains only letters
-                send(player, "Your word can only contain letters!", null);
+                send(roundLeader, "Your word can only contain letters!", null);
             }
             else{        
                 game.set_word(responseString);
-                send(player,"Awaiting for the other users guessess",null);
+                send(roundLeader,"Awaiting for the other users guessess",null);
                 return;
             }
         }
