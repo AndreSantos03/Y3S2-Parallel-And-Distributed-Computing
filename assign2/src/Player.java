@@ -9,6 +9,9 @@ import java.nio.ByteBuffer;
 
 public class Player {
 
+    private final int connectionAttempts = 5;
+    private final int connectionTimeoutsSec = 5;
+
     private final int port;
     private final String host;
     private SocketChannel socket;
@@ -91,7 +94,28 @@ public class Player {
         int port = Integer.parseInt(args[1]);
         try{
             Player player = new Player(port, hostname);
-            player.connect();
+
+            int connectionCounter = 1;
+            
+            //waiting for connection
+            while(true){
+                try{
+                    System.out.println("Connection attempt number #" + connectionCounter);
+                    player.connect();
+                    System.out.println("Connected to server: " + player.socket.getRemoteAddress() + "!");
+                    break;
+                }
+                catch ( IOException e){
+                    connectionCounter++;
+                    if(connectionCounter > player.connectionAttempts){
+                        System.out.println("Exceeded connection attempts to the server!");
+                        System.exit(0);
+                    }
+                    System.out.println("Connection attempt failed. Retrying...");
+                    Thread.sleep(player.connectionTimeoutsSec * 1000); //pass it to mili
+                }
+            }
+        
 
             BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
 
@@ -102,8 +126,6 @@ public class Player {
                 String[] serverResponse = player.receive();
                 message = serverResponse[1];
                 token = serverResponse[0];
-
-                System.out.println(message);
                 
                 //If there's a token
                 if(token != null){

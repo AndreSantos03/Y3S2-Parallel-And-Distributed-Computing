@@ -93,7 +93,6 @@ public class Server {
         int max_attempts = 6;
         game.start(num_rounds);
 
-
         
         //loop through rounds
         for(int i = 0; i < num_rounds;i++){
@@ -106,10 +105,10 @@ public class Server {
 
             //loop through attempts
             for (int j = 0; j < max_attempts; j++) {
-
                 int turn_number = j + 1;
 
                 // Create a new ExecutorService for each iteration of the outer loop
+                //Creates virtual threads
                 var executorService = Executors.newVirtualThreadPerTaskExecutor();
                 List<SocketChannel> winners = new ArrayList<>();
 
@@ -117,11 +116,12 @@ public class Server {
                 Set<SocketChannel> completedGuessers = ConcurrentHashMap.newKeySet();
 
 
+
                 for (SocketChannel guesser : guessers) {
                     executorService.submit(() -> {
                         try {
 
-                            send(guesser, "Attempt number #" + turn_number + "!", null);
+                            send(guesser, "Attempt number #" + turn_number + "!\n", null);
 
 
                             String guess = guessWord(guesser,roundLeader, game.get_word().length());
