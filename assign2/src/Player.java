@@ -107,7 +107,7 @@ public class Player {
                 
                 //If there's a token
                 if(token != null){
-                    if(token.equals("REPLY")){
+                    if(token.contains("REPLY")){
                         System.out.print("Send to server: ");
                         message = consoleReader.readLine();
                         player.send(message,null);

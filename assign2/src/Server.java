@@ -229,7 +229,7 @@ public class Server {
             if(responseString == null){
                 send(player,"You can not enter empty a empty word!",null);
             }
-            if(responseString.length() != wordLength){
+            else if(responseString.length() != wordLength){
                 send(player,"The given word must be " + wordLength + " characters long!",null);
             }
             else if (responseString.contains(" ")) {
