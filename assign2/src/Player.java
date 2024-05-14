@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 
 
 
+
 public class Player {
 
     private final int connectionAttempts = 5;
@@ -15,7 +16,8 @@ public class Player {
     private final int port;
     private final String host;
     private SocketChannel socket;
-
+    private Auth auth;
+    
     // ANSI escape code for yellow color
     String yellowColor = "\u001B[33m";
     // ANSI escape code for green color
@@ -35,6 +37,11 @@ public class Player {
     public Player(int port, String host){
         this.port = port;
         this.host = host;
+        this.auth = new Auth();
+    }
+
+    public void createAccount(String username, String password){
+        auth.register(username, password);
     }
 
     private void connect() throws IOException{
@@ -83,21 +90,12 @@ public class Player {
             return result;        }
     }
 
+    private void comunication(Player player){
+        int connectionCounter = 1;
+        BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
+        //waiting for connection
 
-    public static void main(String[] args) {
-        if (args.length < 2) {
-            System.out.println("Usage: java Player <hostname> <port>");
-            return;
-        }
-
-        String hostname = args[0];
-        int port = Integer.parseInt(args[1]);
         try{
-            Player player = new Player(port, hostname);
-
-            int connectionCounter = 1;
-            
-            //waiting for connection
             while(true){
                 try{
                     System.out.println("Connection attempt number #" + connectionCounter);
@@ -117,8 +115,6 @@ public class Player {
             }
         
 
-            BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
-
             while(true){
                 String message;
                 String token;
@@ -136,11 +132,57 @@ public class Player {
                     }
                 }
 
+            }
+        } catch (Exception e){
+            System.out.println("Exception: " + e.getMessage());
+            e.printStackTrace();
         }
+    }
+
+
+    public static void main(String[] args) {
+        if (args.length < 2) {
+            System.out.println("Usage: java Player <hostname> <port>");
+            return;
+        }
+
+        String hostname = args[0];
+        int port = Integer.parseInt(args[1]);
+        try{
+            Player player = new Player(port, hostname);
+
+           
+            String message;
+
+            BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
+
+
+            System.out.println("Do you wish to LOGIN or REGISTER");
+            message = consoleReader.readLine();
+            if(message.equals("LOGIN")){
+                System.out.println("****LOGIN****");
+                System.out.println("username: ");
+                String username = consoleReader.readLine();
+                System.out.println("password: ");
+                String password = consoleReader.readLine();
+                if(player.auth.authenticate(username, password)){
+                    player.comunication(player);
+                };
+            }else{
+                System.out.println("****REGISTRATION****");
+                System.out.println("username: ");
+                String username = consoleReader.readLine();
+                System.out.println("password: ");
+                String password = consoleReader.readLine();
+                player.createAccount(username, password);
+                player.comunication(player);
+
+            }
 
         }
         catch (Exception exception) {
             System.out.println("Exception: " + exception.getMessage());
+            exception.printStackTrace();
         }        
 
     }

@@ -22,6 +22,7 @@ public class Server {
 
     private List<SocketChannel> connectedPlayers = new ArrayList<>();
     int gameId = 1;
+    private Auth auth;
 
     public static void main(String[] args) {
         if (args.length < 1) {
@@ -36,6 +37,10 @@ public class Server {
         
         // List<Socket> connectedPlayers = simpleConnection(port);
     }
+
+    public boolean login(String username, String password) {
+        return auth.authenticate(username, password);
+    } 
 
     private void simpleConnection(int port, int playersPerGame) {
         int gameId = 1; // Initialize the game ID counter
