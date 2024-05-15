@@ -8,32 +8,32 @@ import java.util.HashMap;
 
 
 public class Game {
-    private List<SocketChannel> userSockets = new ArrayList<>();
-    private Map<SocketChannel,Integer> scores = new HashMap<>();
-    private List<SocketChannel> roundWordChosers = new ArrayList<>(); // list to iterate through rounds with who's choosing the word
+    private List<Map.Entry<String, SocketChannel>> userSockets = new ArrayList<>();
+    private Map<Map.Entry<String, SocketChannel>,Integer> scores = new HashMap<>();
+    private List<Map.Entry<String, SocketChannel>> roundWordChosers = new ArrayList<>(); // list to iterate through rounds with who's choosing the word
     private Integer currentRound = 0;
     private String currentWord;
 
 
-    public Game( List<SocketChannel> userSockets) {
+    public Game( List<Map.Entry<String, SocketChannel>> userSockets) {
         this.userSockets = userSockets;
     }
 
     public void start(int num_rounds) {
         //Creates the rounds with who's choosing the words
         for(int i = 0; i < num_rounds; i++){
-            for(SocketChannel player : userSockets){
+            for(Map.Entry<String, SocketChannel> player : userSockets){
                 roundWordChosers.add(player);
             }
         }
 
         //initialize scores
-        for(SocketChannel player : userSockets){
+        for(Map.Entry<String, SocketChannel> player : userSockets){
             scores.put(player, 0);
         }
     }    
 
-    public Map<SocketChannel,Integer> getScores(){
+    public Map<Map.Entry<String, SocketChannel>,Integer> getScores(){
         return scores;
     }
 
@@ -46,7 +46,7 @@ public class Game {
         return currentRound;
     }
     
-    public SocketChannel get_word_chooser(){
+    public Map.Entry<String, SocketChannel> get_word_chooser(){
         return roundWordChosers.get(currentRound);
     }
 
@@ -101,10 +101,39 @@ public class Game {
         return currentWordWithDash + '\n' + squaresWithDash + '\n';
     }
 
-    public void setRoundResults(List<SocketChannel> roundWinners){
-        for(SocketChannel player :roundWinners ){
+    public void setRoundResults(List<Map.Entry<String, SocketChannel>> roundWinners){
+        for(Map.Entry<String, SocketChannel> player :roundWinners ){
             scores.put(player, scores.get(player) + 1);
         }
+    }
+
+    public void updatePlayer(Map.Entry<String, SocketChannel> newplayer)
+    {
+        for (Map.Entry<String, SocketChannel> player : userSockets)
+        {
+            if (player.getKey() == newplayer.getKey())
+            {
+                player.setValue(newplayer.getValue());
+                return;
+            }
+        }
+    }
+
+    public SocketChannel getSocket(String username)
+    {
+        for (Map.Entry<String, SocketChannel> player : userSockets)
+        {
+            if (player.getKey() == username)
+            {
+                return player.getValue();
+            }
+        }
+        return null;
+    }
+
+    public List<Map.Entry<String, SocketChannel>> getPlayers()
+    {
+        return userSockets;
     }
 }
     

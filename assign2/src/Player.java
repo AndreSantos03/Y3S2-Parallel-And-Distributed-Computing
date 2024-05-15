@@ -70,26 +70,28 @@ public class Player {
 
     //returns the String and the token
     public String[] receive() throws Exception {
-        ByteBuffer buffer = ByteBuffer.allocate(1024);        
-        int bytesRead = socket.read(buffer);    
-        String response = new String(buffer.array(), 0, bytesRead);
+            ByteBuffer buffer = ByteBuffer.allocate(1024);        
+            int bytesRead = socket.read(buffer);    
+            String response = new String(buffer.array(), 0, bytesRead);
 
 
-        //replace with the ansi squares
-        response = response
-        .replace("red", redSquare)
-        .replace("green", greenSquare)
-        .replace("yellow", yellowSquare);
+            //replace with the ansi squares
+            response = response
+            .replace("red", redSquare)
+            .replace("green", greenSquare)
+            .replace("yellow", yellowSquare);
 
-        if(response.contains("|")){
-            String[] parts = response.split("\\|");
-            return parts;
-        }
-        else{
-            String[] result = new String[2];
-            result[0] = null;
-            result[1] = response;
-            return result;        }
+            if(response.contains("|")){
+                String[] parts = response.split("\\|");
+                return parts;
+            }
+            else
+            {
+                String[] result = new String[2];
+                result[0] = null;
+                result[1] = response;
+                return result;        
+            }
     }
 
     private void comunication(Player player){

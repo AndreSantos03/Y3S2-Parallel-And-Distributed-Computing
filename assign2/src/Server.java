@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Server {
 
-    private List<SocketChannel> connectedPlayers = new ArrayList<>();
+    private List<Map.Entry<String, SocketChannel>> connectedPlayers = new ArrayList<>();
     int gameId = 1;
     private Auth auth;
     private List<Game> runningGames = new ArrayList<>();
@@ -88,31 +88,45 @@ public class Server {
                     }
                 }
                 catch (Exception e) {}
+
+                Map.Entry<String, SocketChannel> playerEntry = null;
+                for (Map.Entry<String, SocketChannel> entry : allPlayers) {
+                    if (entry.getValue() == socketChannel) {
+                        playerEntry = entry;
+                        break;
+                    }
+                }
                 
                 if (!isPlayerRejoin)
                 {
                     System.out.println("New client connected: " + socketChannel);
-                    connectedPlayers.add(socketChannel);
+                    connectedPlayers.add(playerEntry);
+                }
+                else
+                {
+                    for (Game game : runningGames) {
+                        game.updatePlayer(playerEntry);
+                    }
                 }
                 
                 if (connectedPlayers.size() >= playersPerGame) {
                     // Start a new game
-                    List<SocketChannel> gamePlayers = new ArrayList<>();
+                    List<Map.Entry<String, SocketChannel>> gamePlayers = new ArrayList<>();
                     int currentGameId = gameId++; // Assign the current game ID
 
                     //prints game starting and players
                     System.out.println("Starting Game #" + currentGameId + " with " + connectedPlayers.size() + " players:");
-                    for (SocketChannel player : connectedPlayers) {
+                    for (Map.Entry<String, SocketChannel> player : connectedPlayers) {
                         gamePlayers.add(player);
-                        System.out.println("- Player: " + player.getRemoteAddress());
+                        System.out.println("- Player: " + player.getValue().getRemoteAddress());
                     }    
                     
                     //starts a virtual thread for the game
                     executorService.submit(() -> {
                         try {
                             //warn of started game
-                            for(var player : gamePlayers ){
-                                send(player,"Game #" + currentGameId + " has started!\n",null);
+                            for(Map.Entry<String, SocketChannel> player : gamePlayers ){
+                                send(player.getValue(),"Game #" + currentGameId + " has started!\n",null);
                             }
 
                             run_game(gamePlayers);
@@ -131,7 +145,7 @@ public class Server {
         }
     }
     
-    private void run_game(List<SocketChannel> players) throws Exception{
+    private void run_game(List<Map.Entry<String, SocketChannel>> players) throws Exception{
         final Game game = new Game(players);
         int num_rounds = 4;//hardcoded for now        
         int max_attempts = 6;
@@ -141,11 +155,11 @@ public class Server {
 
         //loop through rounds
         for(int i = 0; i < num_rounds;i++){
-            SocketChannel roundLeader = game.get_word_chooser();
-            List<SocketChannel> guessers = new ArrayList<>(players);
+            Map.Entry<String, SocketChannel> roundLeader = game.get_word_chooser();
+            List<Map.Entry<String, SocketChannel>> guessers = game.getPlayers();
             guessers.remove(roundLeader);
 
-            chooseWord(roundLeader,game,guessers);
+            chooseWord(roundLeader.getValue(),game,guessers);
 
 
             //loop through attempts
@@ -155,28 +169,28 @@ public class Server {
                 // Create a new ExecutorService for each iteration of the outer loop
                 //Creates virtual threads
                 var executorService = Executors.newVirtualThreadPerTaskExecutor();
-                List<SocketChannel> winners = new ArrayList<>();
+                List<Map.Entry<String, SocketChannel>> winners = new ArrayList<>();
 
                 // Create a set to keep track of users who have submitted their guesses
-                Set<SocketChannel> completedGuessers = ConcurrentHashMap.newKeySet();
+                Set<Map.Entry<String, SocketChannel>> completedGuessers = ConcurrentHashMap.newKeySet();
 
 
 
-                for (SocketChannel guesser : guessers) {
+                for (Map.Entry<String, SocketChannel> guesser : guessers) {
                     executorService.submit(() -> {
                         try {
 
-                            send(guesser, "Attempt number #" + turn_number + "!\n", null);
+                            send(guesser.getValue(), "Attempt number #" + turn_number + "!\n", null);
 
 
-                            String guess = guessWord(guesser,roundLeader, game.get_word().length());
+                            String guess = guessWord(guesser.getValue(),roundLeader.getValue(), game.get_word().length());
                             String guess_result = game.give_guess(guess);
                             if(guess_result.equals("!W")){
                                 winners.add(guesser);
-                                send(guesser, "You guessed the word!", null);
+                                send(guesser.getValue(), "You guessed the word!", null);
                             }
                             else{
-                                send(guesser, guess_result, null);
+                                send(guesser.getValue(), guess_result, null);
                             }
                         } 
                         catch (Exception e) {
@@ -189,7 +203,7 @@ public class Server {
                             // Check if all guessers have submitted their guesses
                             if (completedGuessers.size() < guessers.size()) {
                                 try {
-                                    send(guesser, "Waiting for other guesses to be submitted...", null);
+                                    send(guesser.getValue(), "Waiting for other guesses to be submitted...", null);
                                 } 
                                 catch (Exception ex) {
                                     Thread.currentThread().interrupt(); 
@@ -218,10 +232,10 @@ public class Server {
                     game.setRoundResults(winners);
                     for(var player : connectedPlayers){
                         if(winners.contains(player)){
-                            send(player,"Congratulations! You guessed the word!",null);
+                            send(player.getValue(),"Congratulations! You guessed the word!",null);
                         }
                         else{
-                            send(player,"Someone geussed the word!",null );
+                            send(player.getValue(),"Someone guessed the word!",null );
                         }
                     }
                     break;
@@ -235,10 +249,10 @@ public class Server {
         }
     }
 
-    private void chooseWord(SocketChannel roundLeader, Game game, List<SocketChannel> guessers) throws Exception{
+    private void chooseWord(SocketChannel roundLeader, Game game, List<Map.Entry<String, SocketChannel>> guessers) throws Exception{
         //warn guessers who's choosing the word
-        for(var guesser : guessers){
-            send(guesser, roundLeader + " is choosing the word!\n",null);
+        for(Map.Entry<String, SocketChannel> guesser : guessers){
+            send(guesser.getValue(), roundLeader + " is choosing the word!\n",null);
         }
 
         String message = "You're this round captain! Choose a word: ";
@@ -265,52 +279,57 @@ public class Server {
         }
     }
 
-    private String guessWord(SocketChannel player,SocketChannel roundLeader, int wordLength) throws Exception{
+    private String guessWord(SocketChannel player, SocketChannel roundLeader, int wordLength) throws Exception{
         String message = "Try to guess the " + wordLength + " letters word:";
-        String responseString = " ";
+        String responseString = "";
         while(true){
-            send(player, message,"REPLY");
-            responseString = receive(player)[1];
-            if(responseString == null){
-                send(player,"You can not enter empty a empty word!",null);
+            try
+            {
+                    send(player, message,"REPLY");
+                responseString = receive(player)[1];
+                if(responseString == null){
+                    send(player,"You can not enter empty a empty word!",null);
+                }
+                else if(responseString.length() != wordLength){
+                    send(player,"The given word must be " + wordLength + " characters long!",null);
+                }
+                else if (responseString.contains(" ")) {
+                    // Check if the response contains a space
+                    send(player, "Your word cannot contain spaces!",null);
+                } 
+                else if (!responseString.matches("[a-zA-Z]+")) {
+                    // Check if the response contains only letters
+                    send(player, "Your word can only contain letters!",null);
+                }
+                else{        
+                    //send message to the host about the guess
+                    send(roundLeader, player + " guessed the word " + responseString + "!", null);
+                    return responseString;
+                }
             }
-            else if(responseString.length() != wordLength){
-                send(player,"The given word must be " + wordLength + " characters long!",null);
-            }
-            else if (responseString.contains(" ")) {
-                // Check if the response contains a space
-                send(player, "Your word cannot contain spaces!",null);
-            } 
-            else if (!responseString.matches("[a-zA-Z]+")) {
-                // Check if the response contains only letters
-                send(player, "Your word can only contain letters!",null);
-            }
-            else{        
-                //send message to the host about the guess
-                send(roundLeader, player + " guessed the word " + responseString + "!", null);
-                return responseString;
-            }
+            catch(Exception e){}
+            
         }
     }
 
     private void sendLeaderboard(Game game) throws Exception{
-        List<Map.Entry<SocketChannel, Integer>> entryList = new ArrayList<>(game.getScores().entrySet());
+        List<Map.Entry<Map.Entry<String, SocketChannel>, Integer>> entryList = new ArrayList<>(game.getScores().entrySet());
 
         entryList.sort(Map.Entry.comparingByValue(Comparator.reverseOrder()));
 
         StringBuilder leaderboard = new StringBuilder("Leaderboard:\n");
         int rank = 1;
-        for (Map.Entry<SocketChannel, Integer> entry : entryList) {
-            SocketChannel socket = entry.getKey();
+        for (Map.Entry<Map.Entry<String, SocketChannel>, Integer> entry : entryList) {
+            Map.Entry<String, SocketChannel> socket = entry.getKey();
             Integer score = entry.getValue();
             leaderboard.append(rank).append(". Socket: ").append(socket).append(", Score: ").append(score).append("\n");
             rank++;
         }
 
-        for (Map.Entry<SocketChannel, Integer> entry : entryList) {
-            SocketChannel socket = entry.getKey();
+        for (Map.Entry<Map.Entry<String, SocketChannel>, Integer> entry : entryList) {
+            Map.Entry<String, SocketChannel> socket = entry.getKey();
             String leaderboardString = leaderboard.toString();
-            send(socket, leaderboardString, null);
+            send(socket.getValue(), leaderboardString, null);
         }       
     }
 
