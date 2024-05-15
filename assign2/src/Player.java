@@ -17,6 +17,8 @@ public class Player {
     private final String host;
     private SocketChannel socket;
     private Auth auth;
+
+    private String username;
     
     // ANSI escape code for yellow color
     String yellowColor = "\u001B[33m";
@@ -113,6 +115,31 @@ public class Player {
                     Thread.sleep(player.connectionTimeoutsSec * 1000); //pass it to mili
                 }
             }
+
+            boolean responded = false;
+            while (!responded)
+            {
+                try
+                {
+                    send(player.getUsername(), null);
+                    ByteBuffer buffer = ByteBuffer.allocate(1024);        
+                    int bytesRead = socket.read(buffer);    
+                    String response = new String(buffer.array(), 0, bytesRead);
+
+                    if (response == "OKUSERNAME")
+                        responded = true;
+                        break;
+                }
+                catch ( IOException e){
+                    connectionCounter++;
+                    if(connectionCounter > player.connectionAttempts){
+                        System.out.println("Exceeded connection attempts to the server!");
+                        System.exit(0);
+                    }
+                    System.out.println("Connection attempt failed. Retrying...");
+                    Thread.sleep(player.connectionTimeoutsSec * 1000); //pass it to mili
+                }
+            }
         
 
             while(true){
@@ -163,6 +190,7 @@ public class Player {
                 System.out.println("****LOGIN****");
                 System.out.println("username: ");
                 String username = consoleReader.readLine();
+                player.username = username;
                 System.out.println("password: ");
                 String password = consoleReader.readLine();
                 if(player.auth.authenticate(username, password)){
@@ -172,6 +200,7 @@ public class Player {
                 System.out.println("****REGISTRATION****");
                 System.out.println("username: ");
                 String username = consoleReader.readLine();
+                player.username = username;
                 System.out.println("password: ");
                 String password = consoleReader.readLine();
                 player.createAccount(username, password);
@@ -185,5 +214,15 @@ public class Player {
             exception.printStackTrace();
         }        
 
+    }
+
+    public String getUsername()
+    {
+        return username;
+    }
+
+    public SocketChannel getSocket()
+    {
+        return socket;
     }
 }

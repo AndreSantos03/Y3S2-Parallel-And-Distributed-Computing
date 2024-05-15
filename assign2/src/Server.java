@@ -23,6 +23,9 @@ public class Server {
     private List<SocketChannel> connectedPlayers = new ArrayList<>();
     int gameId = 1;
     private Auth auth;
+    private List<Game> runningGames = new ArrayList<>();
+    private List<Map.Entry<String, SocketChannel>> allPlayers = new ArrayList<>();
+    private List<SocketChannel> waitingPlayers = new ArrayList<>();
 
     public static void main(String[] args) {
         if (args.length < 1) {
@@ -54,17 +57,53 @@ public class Server {
     
             while (true) {
                 SocketChannel socketChannel = serverSocketChannel.accept();
-                System.out.println("New client connected: " + socketChannel);
-                connectedPlayers.add(socketChannel);
+                waitingPlayers.add(socketChannel);
+
+                boolean isPlayerRejoin = true;
+                SocketChannel waitingPlayer = waitingPlayers.getFirst();
+                try
+                {
+                    ByteBuffer buffer = ByteBuffer.allocate(1024);        
+                    int bytesRead = waitingPlayer.read(buffer);    
+                    String response = new String(buffer.array(), 0, bytesRead);
+                    if (response != null)
+                    {
+                        send(waitingPlayer, "OKUSERNAME", null);
+                        waitingPlayers.remove(waitingPlayer);
+                        
+                        isPlayerRejoin = false;
+                        for (Map.Entry<String, SocketChannel> player : allPlayers)
+                        {
+                            if (player.getKey().toString() == response)
+                            {
+                                player.setValue(socketChannel);
+                                isPlayerRejoin = true;
+                                break;
+                            }
+                        }
+                        if (!isPlayerRejoin)
+                        {
+                            allPlayers.add(Map.entry(response, socketChannel));
+                        }
+                    }
+                }
+                catch (Exception e) {}
+                
+                if (!isPlayerRejoin)
+                {
+                    System.out.println("New client connected: " + socketChannel);
+                    connectedPlayers.add(socketChannel);
+                }
                 
                 if (connectedPlayers.size() >= playersPerGame) {
                     // Start a new game
-                    List<SocketChannel> gamePlayers = new ArrayList<>(connectedPlayers);
+                    List<SocketChannel> gamePlayers = new ArrayList<>();
                     int currentGameId = gameId++; // Assign the current game ID
 
                     //prints game starting and players
-                    System.out.println("Starting Game #" + currentGameId + " with " + gamePlayers.size() + " players:");
-                    for (SocketChannel player : gamePlayers) {
+                    System.out.println("Starting Game #" + currentGameId + " with " + connectedPlayers.size() + " players:");
+                    for (SocketChannel player : connectedPlayers) {
+                        gamePlayers.add(player);
                         System.out.println("- Player: " + player.getRemoteAddress());
                     }    
                     
@@ -72,7 +111,7 @@ public class Server {
                     executorService.submit(() -> {
                         try {
                             //warn of started game
-                            for(var player : connectedPlayers ){
+                            for(var player : gamePlayers ){
                                 send(player,"Game #" + currentGameId + " has started!\n",null);
                             }
 
@@ -98,7 +137,8 @@ public class Server {
         int max_attempts = 6;
         game.start(num_rounds);
 
-        
+        runningGames.add(game);
+
         //loop through rounds
         for(int i = 0; i < num_rounds;i++){
             SocketChannel roundLeader = game.get_word_chooser();
@@ -298,7 +338,8 @@ public class Server {
         ByteBuffer buffer = ByteBuffer.allocate(1024);        
         int bytesRead = socket.read(buffer);    
         String response = new String(buffer.array(), 0, bytesRead);
-        if(response.contains("|")){
+        if(response.contains("|"))
+        {
             String[] parts = response.split("\\|");
             return parts;
         }

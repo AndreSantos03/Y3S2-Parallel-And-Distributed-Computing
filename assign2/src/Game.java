@@ -106,6 +106,5 @@ public class Game {
             scores.put(player, scores.get(player) + 1);
         }
     }
-
 }
     
