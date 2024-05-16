@@ -118,7 +118,7 @@ public class Server {
                     System.out.println("Starting Game #" + currentGameId + " with " + connectedPlayers.size() + " players:");
                     for (Map.Entry<String, SocketChannel> player : connectedPlayers) {
                         gamePlayers.add(player);
-                        System.out.println("- Player: " + player.getValue().getRemoteAddress());
+                        System.out.println("- Player: " + player.getKey());
                     }    
                     
                     //starts a virtual thread for the game
@@ -156,10 +156,10 @@ public class Server {
         //loop through rounds
         for(int i = 0; i < num_rounds;i++){
             Map.Entry<String, SocketChannel> roundLeader = game.get_word_chooser();
-            List<Map.Entry<String, SocketChannel>> guessers = game.getPlayers();
+            List<Map.Entry<String, SocketChannel>> guessers = new ArrayList<>(game.getPlayers());
             guessers.remove(roundLeader);
 
-            chooseWord(roundLeader.getValue(),game,guessers);
+            chooseWord(roundLeader,game,guessers);
 
 
             //loop through attempts
@@ -183,7 +183,7 @@ public class Server {
                             send(guesser.getValue(), "Attempt number #" + turn_number + "!\n", null);
 
 
-                            String guess = guessWord(guesser.getValue(),roundLeader.getValue(), game.get_word().length());
+                            String guess = guessWord(guesser,roundLeader, game, game.get_word().length());
                             String guess_result = game.give_guess(guess);
                             if(guess_result.equals("!W")){
                                 winners.add(guesser);
@@ -249,7 +249,7 @@ public class Server {
         }
     }
 
-    private void chooseWord(SocketChannel roundLeader, Game game, List<Map.Entry<String, SocketChannel>> guessers) throws Exception{
+    private void chooseWord(Map.Entry<String, SocketChannel> roundLeader, Game game, List<Map.Entry<String, SocketChannel>> guessers) throws Exception{
         //warn guessers who's choosing the word
         for(Map.Entry<String, SocketChannel> guesser : guessers){
             send(guesser.getValue(), roundLeader + " is choosing the word!\n",null);
@@ -258,52 +258,54 @@ public class Server {
         String message = "You're this round captain! Choose a word: ";
         String responseString = " ";
         while(true){
-            send(roundLeader, message,"REPLY");
-            responseString = receive(roundLeader)[1];
+            SocketChannel socket = game.getSocket(roundLeader.getKey());
+            send(socket, message,"REPLY");
+            responseString = receive(socket)[1];
             if(responseString == null){
-                send(roundLeader,"You can not enter empty a empty word!",null);
+                send(socket,"You can not enter empty a empty word!",null);
             }
             else if (responseString.contains(" ")) {
                 // Check if the response contains a space
-                send(roundLeader, "Your word cannot contain spaces!", null);
+                send(socket, "Your word cannot contain spaces!", null);
             } 
             else if (!responseString.matches("[a-zA-Z]+")) {
                 // Check if the response contains only letters
-                send(roundLeader, "Your word can only contain letters!", null);
+                send(socket, "Your word can only contain letters!", null);
             }
             else{        
                 game.set_word(responseString);
-                send(roundLeader,"Awaiting for the other users guessess",null);
+                send(socket,"Awaiting for the other users guessess",null);
                 return;
             }
         }
     }
 
-    private String guessWord(SocketChannel player, SocketChannel roundLeader, int wordLength) throws Exception{
+    private String guessWord(Map.Entry<String, SocketChannel> player, Map.Entry<String, SocketChannel> roundLeader, Game game, int wordLength) throws Exception{
         String message = "Try to guess the " + wordLength + " letters word:";
         String responseString = "";
         while(true){
             try
             {
-                    send(player, message,"REPLY");
-                responseString = receive(player)[1];
+                SocketChannel socket = game.getSocket(roundLeader.getKey());
+                    send(socket, message,"REPLY");
+                responseString = receive(socket)[1];
                 if(responseString == null){
-                    send(player,"You can not enter empty a empty word!",null);
+                    send(socket,"You can not enter empty a empty word!",null);
                 }
                 else if(responseString.length() != wordLength){
-                    send(player,"The given word must be " + wordLength + " characters long!",null);
+                    send(socket,"The given word must be " + wordLength + " characters long!",null);
                 }
                 else if (responseString.contains(" ")) {
                     // Check if the response contains a space
-                    send(player, "Your word cannot contain spaces!",null);
+                    send(socket, "Your word cannot contain spaces!",null);
                 } 
                 else if (!responseString.matches("[a-zA-Z]+")) {
                     // Check if the response contains only letters
-                    send(player, "Your word can only contain letters!",null);
+                    send(socket, "Your word can only contain letters!",null);
                 }
                 else{        
                     //send message to the host about the guess
-                    send(roundLeader, player + " guessed the word " + responseString + "!", null);
+                    send(socket, socket + " guessed the word " + responseString + "!", null);
                     return responseString;
                 }
             }

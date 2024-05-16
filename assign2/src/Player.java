@@ -53,7 +53,7 @@ public class Player {
 
     public void send(String message,String token) throws Exception {
         String sentMessage;
-        if(token == null){
+        if(token != null){
             sentMessage = token + "|" + message;
         }
         else{
