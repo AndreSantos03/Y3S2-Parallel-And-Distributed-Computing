@@ -16,7 +16,7 @@ public class Player {
     private final int port;
     private final String host;
     private SocketChannel socket;
-    private Auth auth;
+
 
     private String username;
     private String password;
@@ -40,11 +40,7 @@ public class Player {
     public Player(int port, String host){
         this.port = port;
         this.host = host;
-        //this.auth = new Auth();
-    }
 
-    public void createAccount(String username, String password){
-        auth.register(username, password);
     }
 
     private void connect() throws IOException{
@@ -125,21 +121,42 @@ public class Player {
             {
                 try
                 {
-                    String token;
-                    if(registration){
-                        token = "REGISTRATION";
+
+                    String message,token;
+                    System.out.println("Do you wish to LOGIN or REGISTER");
+                    message = consoleReader.readLine();
+
+                    if(message.equals("LOGIN")){
+                        System.out.println("****LOGIN****");
+                        System.out.println("username: ");
+                        String username = consoleReader.readLine();
+                        player.username = username;
+                        System.out.println("password: ");
+                        String password = consoleReader.readLine();
+                        player.password = password;
+                        token =  "REGISTRATION";
+
                     }else{
+                        System.out.println("****REGISTRATION****");
+                        System.out.println("username: ");
+                        String username = consoleReader.readLine();
+                        player.username = username;
+                        System.out.println("password: ");
+                        player.password = consoleReader.readLine();
                         token = "LOGIN";
+
                     }
+
                     send(player.getUsername(), token);
                     send(player.password,token);
                     ByteBuffer buffer = ByteBuffer.allocate(1024);        
                     int bytesRead = socket.read(buffer);    
                     String response = new String(buffer.array(), 0, bytesRead);
 
-                    if (response == "OKUSERNAME")
+                    if (response.equals("OKUSERNAME")){
                         responded = true;
                         break;
+                    }
                 }
                 catch ( IOException e){
                     connectionCounter++;
@@ -169,6 +186,9 @@ public class Player {
                         player.send(message,null);
                     }
                 }
+                else{
+                    System.out.println(message);
+                }
 
             }
         } catch (Exception e){
@@ -191,35 +211,8 @@ public class Player {
         try{
             Player player = new Player(port, hostname);
 
-           
-            String message;
-
-            BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
-
-
-            System.out.println("Do you wish to LOGIN or REGISTER");
-            message = consoleReader.readLine();
             var registration = false;
-            if(message.equals("LOGIN")){
-                System.out.println("****LOGIN****");
-                System.out.println("username: ");
-                String username = consoleReader.readLine();
-                player.username = username;
-                System.out.println("password: ");
-                String password = consoleReader.readLine();
-                player.password = password;
-              
-    
-            }else{
-                System.out.println("****REGISTRATION****");
-                System.out.println("username: ");
-                String username = consoleReader.readLine();
-                player.username = username;
-                System.out.println("password: ");
-                player.password = consoleReader.readLine();
-                registration = true;
-                
-            }
+
             player.comunication(player, registration);
 
         }

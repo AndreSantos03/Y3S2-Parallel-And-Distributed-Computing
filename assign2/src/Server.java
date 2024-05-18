@@ -1,11 +1,7 @@
 import java.io.*;
 import java.net.*;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Comparator;
-import java.util.Set;
+import java.util.*;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -35,6 +31,7 @@ public class Server {
         }
 
         Server server = new Server();
+
         int port = Integer.parseInt(args[0]);
         int playersPerGame = Integer.parseInt(args[1]);
         server.simpleConnection(port,playersPerGame);        
@@ -48,7 +45,7 @@ public class Server {
 
     private void simpleConnection(int port, int playersPerGame) {
         int gameId = 1; // Initialize the game ID counter
-    
+        this.auth = new Auth();
         try (ServerSocketChannel serverSocketChannel = ServerSocketChannel.open()) {
             serverSocketChannel.bind(new InetSocketAddress(port));
             System.out.println("Server is listening on port " + port);
@@ -68,24 +65,23 @@ public class Server {
                     String username = receive(socketChannel)[1];
                 
                     String[] response = receive(socketChannel);
-                    String password = response[0];
-                    String token = response[1];
+                    String password = response[1];
+                    String token = response[0];
                
 
-                    if(token == "REGISTRATION"){
+                    if(Objects.equals(token, "REGISTRATION")){
                         auth.register(username, password);
                     }
 
                     if (login(username, password))
                     {
-                        System.out.println("logged in");
                         send(waitingPlayer, "OKUSERNAME", null);
                         waitingPlayers.remove(waitingPlayer);
                         
                         isPlayerRejoin = false;
                         for (Map.Entry<String, SocketChannel> player : allPlayers)
                         {
-                            if (player.getKey().toString() == username)
+                            if (Objects.equals(player.getKey(), username))
                             {
                                 player.setValue(socketChannel);
                                 isPlayerRejoin = true;

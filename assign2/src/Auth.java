@@ -38,7 +38,7 @@ public class Auth {
         } catch ( NoSuchAlgorithmException e){
             throw new IllegalStateException("Missing Algorithm: " + ALGORITHM, e);
         } catch (InvalidKeySpecException e){
-            throw new IllegalStateException("Invalid SecrectKeyFactory", e);
+            throw new IllegalStateException("Invalid SecretKeyFactory", e);
         }
         
     }
@@ -77,7 +77,7 @@ public class Auth {
         for (Map.Entry<String, String> entry : users.entrySet()) {
             properties.setProperty(entry.getKey(), entry.getValue());
         }
-        try (OutputStream output = new FileOutputStream("users.properties")) {
+        try (OutputStream output = new FileOutputStream("assign2/src/users.properties")) {
             properties.store(output, null);
         } catch (IOException e) {
             System.out.println("An error occurred while saving user data.");
@@ -87,7 +87,7 @@ public class Auth {
 
     private void loadUsers() {
         Properties properties = new Properties();
-        try (InputStream input = new FileInputStream("users.properties")) {
+        try (InputStream input = new FileInputStream("assign2/src/users.properties")) {
             properties.load(input);
             users = new HashMap<>();
             for (String key : properties.stringPropertyNames()) {
