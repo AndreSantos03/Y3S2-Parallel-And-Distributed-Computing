@@ -19,6 +19,7 @@ public class Player {
     private Auth auth;
 
     private String username;
+    private String password;
     
     // ANSI escape code for yellow color
     String yellowColor = "\u001B[33m";
@@ -39,7 +40,7 @@ public class Player {
     public Player(int port, String host){
         this.port = port;
         this.host = host;
-        this.auth = new Auth();
+        //this.auth = new Auth();
     }
 
     public void createAccount(String username, String password){
@@ -94,7 +95,7 @@ public class Player {
             }
     }
 
-    private void comunication(Player player){
+    private void comunication(Player player, Boolean registration){
         int connectionCounter = 1;
         BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
         //waiting for connection
@@ -119,11 +120,19 @@ public class Player {
             }
 
             boolean responded = false;
+            
             while (!responded)
             {
                 try
                 {
-                    send(player.getUsername(), null);
+                    String token;
+                    if(registration){
+                        token = "REGISTRATION";
+                    }else{
+                        token = "LOGIN";
+                    }
+                    send(player.getUsername(), token);
+                    send(player.password,token);
                     ByteBuffer buffer = ByteBuffer.allocate(1024);        
                     int bytesRead = socket.read(buffer);    
                     String response = new String(buffer.array(), 0, bytesRead);
@@ -170,6 +179,7 @@ public class Player {
 
 
     public static void main(String[] args) {
+        
         if (args.length < 2) {
             System.out.println("Usage: java Player <hostname> <port>");
             return;
@@ -177,6 +187,7 @@ public class Player {
 
         String hostname = args[0];
         int port = Integer.parseInt(args[1]);
+
         try{
             Player player = new Player(port, hostname);
 
@@ -188,6 +199,7 @@ public class Player {
 
             System.out.println("Do you wish to LOGIN or REGISTER");
             message = consoleReader.readLine();
+            var registration = false;
             if(message.equals("LOGIN")){
                 System.out.println("****LOGIN****");
                 System.out.println("username: ");
@@ -195,20 +207,20 @@ public class Player {
                 player.username = username;
                 System.out.println("password: ");
                 String password = consoleReader.readLine();
-                if(player.auth.authenticate(username, password)){
-                    player.comunication(player);
-                };
+                player.password = password;
+              
+    
             }else{
                 System.out.println("****REGISTRATION****");
                 System.out.println("username: ");
                 String username = consoleReader.readLine();
                 player.username = username;
                 System.out.println("password: ");
-                String password = consoleReader.readLine();
-                player.createAccount(username, password);
-                player.comunication(player);
-
+                player.password = consoleReader.readLine();
+                registration = true;
+                
             }
+            player.comunication(player, registration);
 
         }
         catch (Exception exception) {

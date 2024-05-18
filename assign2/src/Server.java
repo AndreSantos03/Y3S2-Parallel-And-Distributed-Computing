@@ -28,6 +28,7 @@ public class Server {
     private List<SocketChannel> waitingPlayers = new ArrayList<>();
 
     public static void main(String[] args) {
+        
         if (args.length < 1) {
             System.out.println("Usage: java Server <port> <game_player_count>");
             return;
@@ -63,18 +64,28 @@ public class Server {
                 SocketChannel waitingPlayer = waitingPlayers.getFirst();
                 try
                 {
-                    ByteBuffer buffer = ByteBuffer.allocate(1024);        
-                    int bytesRead = waitingPlayer.read(buffer);    
-                    String response = new String(buffer.array(), 0, bytesRead);
-                    if (response != null)
+                   
+                    String username = receive(socketChannel)[1];
+                
+                    String[] response = receive(socketChannel);
+                    String password = response[0];
+                    String token = response[1];
+               
+
+                    if(token == "REGISTRATION"){
+                        auth.register(username, password);
+                    }
+
+                    if (login(username, password))
                     {
+                        System.out.println("logged in");
                         send(waitingPlayer, "OKUSERNAME", null);
                         waitingPlayers.remove(waitingPlayer);
                         
                         isPlayerRejoin = false;
                         for (Map.Entry<String, SocketChannel> player : allPlayers)
                         {
-                            if (player.getKey().toString() == response)
+                            if (player.getKey().toString() == username)
                             {
                                 player.setValue(socketChannel);
                                 isPlayerRejoin = true;
@@ -83,7 +94,7 @@ public class Server {
                         }
                         if (!isPlayerRejoin)
                         {
-                            allPlayers.add(Map.entry(response, socketChannel));
+                            allPlayers.add(Map.entry(username, socketChannel));
                         }
                     }
                 }
