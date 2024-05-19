@@ -202,7 +202,6 @@ public class Server {
             }
 
             if (!isPlayerRejoin) {
-                //System.out.println("New client connected: " + socketChannel);
                 connectedPlayers.add(playerEntry);
             } else {
                 lock.lock();
@@ -328,6 +327,14 @@ public class Server {
             game.newRound();
             sendLeaderboard(game);
         }
+
+        // Notify players that the game is over
+        for (Map.Entry<String, SocketChannel> player : players) {
+            send(player.getValue(), "Game over. Thank you for playing!", "OVER");
+
+            player.getValue().close(); // Close the connection
+        }
+
     }
 
     private void chooseWord(Map.Entry<String, SocketChannel> roundLeader, Game game, List<Map.Entry<String, SocketChannel>> guessers) throws Exception {

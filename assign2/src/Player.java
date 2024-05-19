@@ -148,6 +148,9 @@ public class Player {
                         System.out.print("Send to server: ");
                         message = consoleReader.readLine();
                         send(message, null);
+                    } else if (token.contains("OVER")) {
+                        System.out.println(message);
+                        break;
                     }
                 } else {
                     System.out.println(message);
