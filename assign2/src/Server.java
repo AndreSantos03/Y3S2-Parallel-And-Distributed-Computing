@@ -53,10 +53,6 @@ public class Server {
         }
     }
 
-    public boolean login(String username, String password) {
-        return auth.authenticate(username, password);
-    }
-
     private void sslConnection(int port, int playersPerGame) {
         System.setProperty("javax.net.ssl.keyStore", "assign2/src/serverKeystore.jks");
         System.setProperty("javax.net.ssl.keyStorePassword", "wordle");
@@ -150,15 +146,13 @@ public class Server {
 
                     SocketChannel socketChannel = serverSocketChannel.accept();
 
-                    System.out.println("New client connected: " + socketChannel.isConnected());
+                    //System.out.println("New client connected: " + socketChannel.isConnected());
 
                     // Read username from the client to match with authenticated SSLSocket
                     ByteBuffer buffer = ByteBuffer.allocate(1024);
                     socketChannel.read(buffer);
                     buffer.flip();
                     String username = new String(buffer.array(), buffer.position(), buffer.limit()).trim();
-
-
 
                     authenticatedSSLSockets.remove(username);
 
@@ -208,7 +202,7 @@ public class Server {
             }
 
             if (!isPlayerRejoin) {
-                System.out.println("New client connected: " + socketChannel);
+                //System.out.println("New client connected: " + socketChannel);
                 connectedPlayers.add(playerEntry);
             } else {
                 lock.lock();
@@ -253,7 +247,7 @@ public class Server {
 
     private void run_game(List<Map.Entry<String, SocketChannel>> players) throws Exception {
         final Game game = new Game(players);
-        int num_rounds = 4; // hardcoded for now
+        int num_rounds = 2; // hardcoded for now
         int max_attempts = 6;
         game.start(num_rounds);
 
@@ -361,13 +355,17 @@ public class Server {
         }
     }
 
-    private String guessWord(Map.Entry<String, SocketChannel> player, Map.Entry<String, SocketChannel> roundLeader, Game game, int wordLength) throws Exception {
+    private String guessWord(Map.Entry<String, SocketChannel> player, Map.Entry<String, SocketChannel> roundLeader, Game game, int wordLength){
         String message = "Try to guess the " + wordLength + " letters word:";
-        String responseString = "";
+        String responseString;
         while (true) {
             try {
                 SocketChannel socket = game.getSocket(player.getKey());
-                send(socket, message, "REPLY");
+                if (socket == null) {
+                    return "The player guessing the word is not connected!";
+                }else{
+                    send(socket, message, "REPLY");
+                }
                 responseString = receive(socket)[1];
                 if (responseString == null) {
                     send(socket, "You cannot enter an empty word!", null);

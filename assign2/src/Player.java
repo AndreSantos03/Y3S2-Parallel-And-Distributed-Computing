@@ -113,7 +113,7 @@ public class Player {
 
     private void gameStart() {
         int connectionCounter = 1;
-        System.out.println("Game is starting!");
+
         BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
         // waiting for connection
         try {
@@ -132,7 +132,7 @@ public class Player {
                     Thread.sleep(CONNECTION_TIMEOUT_SEC * 1000); // pass it to milli
                 }
             }
-
+            System.out.println("Waiting for another players to join");
             while (true) {
                 String message;
                 String token;
