@@ -4,18 +4,29 @@ import java.nio.channels.SocketChannel;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+
+
 
 
 
 
 public class Player {
 
-    private final int connectionAttempts = 5;
-    private final int connectionTimeoutsSec = 5;
+
+    private static final int CONNECTION_ATTEMPTS = 5;
+    private static final int CONNECTION_TIMEOUT_SEC = 5;
+
 
     private final int port;
     private final String host;
     private SocketChannel socket;
+
+    private SSLSocket sslSocket; //socket for server authentication
+    private PrintWriter out;
+    private BufferedReader in;
+    BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
 
 
     private String username;
@@ -41,6 +52,30 @@ public class Player {
         this.port = port;
         this.host = host;
 
+    }
+
+    private SSLSocket connectSSL() throws IOException {
+        System.setProperty("javax.net.ssl.trustStore", "assign2/src/clientTruststore.jks");
+        System.setProperty("javax.net.ssl.trustStorePassword", "wordle");
+
+        SSLSocketFactory sslsf = (SSLSocketFactory) SSLSocketFactory.getDefault();
+
+        try {
+            sslSocket = (SSLSocket) sslsf.createSocket(host, port);
+            sslSocket.startHandshake(); // Ensure the handshake is complete
+            System.out.println("SSL Session:");
+            System.out.println(" - Protocol : " + sslSocket.getSession().getProtocol());
+            System.out.println(" - Cipher suite : " + sslSocket.getSession().getCipherSuite());
+            System.out.println("Connected to server: " + sslSocket.getInetAddress() + "!");
+            out = new PrintWriter(sslSocket.getOutputStream(), true);
+            in = new BufferedReader(new InputStreamReader(sslSocket.getInputStream()));
+        } catch (IOException e) {
+            if (sslSocket != null) {
+                sslSocket.close();
+            }
+            throw e;
+        }
+        return sslSocket;
     }
 
     private void connect() throws IOException{
@@ -91,84 +126,31 @@ public class Player {
             }
     }
 
-    private void comunication(Player player, Boolean registration){
+
+    private void gameStart(Player player){
         int connectionCounter = 1;
         BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
         //waiting for connection
-
         try{
             while(true){
                 try{
                     System.out.println("Connection attempt number #" + connectionCounter);
-                    player.connect();
+
+                    //player.connect();
+
                     System.out.println("Connected to server: " + player.socket.getRemoteAddress() + "!");
                     break;
                 }
                 catch ( IOException e){
                     connectionCounter++;
-                    if(connectionCounter > player.connectionAttempts){
+                    if(connectionCounter > CONNECTION_ATTEMPTS){
                         System.out.println("Exceeded connection attempts to the server!");
                         System.exit(0);
                     }
                     System.out.println("Connection attempt failed. Retrying...");
-                    Thread.sleep(player.connectionTimeoutsSec * 1000); //pass it to mili
+                    Thread.sleep(player.CONNECTION_TIMEOUT_SEC * 1000); //pass it to mili
                 }
             }
-
-            boolean responded = false;
-            
-            while (!responded)
-            {
-                try
-                {
-
-                    String message,token;
-                    System.out.println("Do you wish to LOGIN or REGISTER");
-                    message = consoleReader.readLine();
-
-                    if(message.equals("LOGIN")){
-                        System.out.println("****LOGIN****");
-                        System.out.println("username: ");
-                        String username = consoleReader.readLine();
-                        player.username = username;
-                        System.out.println("password: ");
-                        String password = consoleReader.readLine();
-                        player.password = password;
-                        token =  "REGISTRATION";
-
-                    }else{
-                        System.out.println("****REGISTRATION****");
-                        System.out.println("username: ");
-                        String username = consoleReader.readLine();
-                        player.username = username;
-                        System.out.println("password: ");
-                        player.password = consoleReader.readLine();
-                        token = "LOGIN";
-
-                    }
-
-                    send(player.getUsername(), token);
-                    send(player.password,token);
-                    ByteBuffer buffer = ByteBuffer.allocate(1024);        
-                    int bytesRead = socket.read(buffer);    
-                    String response = new String(buffer.array(), 0, bytesRead);
-
-                    if (response.equals("OKUSERNAME")){
-                        responded = true;
-                        break;
-                    }
-                }
-                catch ( IOException e){
-                    connectionCounter++;
-                    if(connectionCounter > player.connectionAttempts){
-                        System.out.println("Exceeded connection attempts to the server!");
-                        System.exit(0);
-                    }
-                    System.out.println("Connection attempt failed. Retrying...");
-                    Thread.sleep(player.connectionTimeoutsSec * 1000); //pass it to mili
-                }
-            }
-        
 
             while(true){
                 String message;
@@ -197,9 +179,48 @@ public class Player {
         }
     }
 
+    private void performLoginOrRegister() throws IOException {
+        boolean responded = false;
+        while (!responded) {
+            System.out.println("Do you wish to LOGIN or REGISTER");
+            String action = consoleReader.readLine().toUpperCase();
+            String token;
+
+            if ("LOGIN".equals(action)) {
+                System.out.println("**** LOGIN ****");
+                token = "LOGIN";
+            } else if ("REGISTER".equals(action)) {
+                System.out.println("**** REGISTRATION ****");
+                token = "REGISTRATION";
+            } else {
+                System.out.println("Invalid option. Please choose LOGIN or REGISTER.");
+                continue;
+            }
+
+            System.out.print("Username: ");
+            username = consoleReader.readLine();
+            System.out.print("Password: ");
+            password = consoleReader.readLine();
+
+            out.println(username+"|"+token);
+            out.println(password+"|"+token);
+
+            String[] response = in.readLine().split("\\|");
+            if ("OK".equals(response[1])) {
+                responded = true;
+                System.out.println("Authentication successful.");
+            } else {
+                System.out.println("Authentication failed. Try again.");
+            }
+        }
+    }
+
+    public void startGame() throws IOException {
+        connect();
+    }
+
 
     public static void main(String[] args) {
-        
         if (args.length < 2) {
             System.out.println("Usage: java Player <hostname> <port>");
             return;
@@ -208,27 +229,35 @@ public class Player {
         String hostname = args[0];
         int port = Integer.parseInt(args[1]);
 
-        try{
-            Player player = new Player(port, hostname);
+        Player player = new Player(port, hostname);
+        int attempt = 0;
 
-            var registration = false;
-
-            player.comunication(player, registration);
-
+        while (attempt < CONNECTION_ATTEMPTS) {
+            try {
+                player.connectSSL();
+                player.performLoginOrRegister();
+                player.gameStart(player);
+                break;
+            } catch (IOException e) {
+                System.err.println("Connection attempt " + (attempt + 1) + " failed: " + e.getMessage());
+                attempt++;
+                if (attempt >= CONNECTION_ATTEMPTS) {
+                    System.err.println("Exceeded maximum connection attempts. Exiting.");
+                    break;
+                }
+                try {
+                    Thread.sleep(CONNECTION_TIMEOUT_SEC * 1000);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+            }
         }
-        catch (Exception exception) {
-            System.out.println("Exception: " + exception.getMessage());
-            exception.printStackTrace();
-        }        
-
     }
-
-    public String getUsername()
-    {
+    public String getUsername () {
         return username;
     }
 
-    public SocketChannel getSocket()
+    public SocketChannel getSocket ()
     {
         return socket;
     }
