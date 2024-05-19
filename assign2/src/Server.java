@@ -14,18 +14,14 @@ public class Server {
 
     private List<Map.Entry<String, SocketChannel>> connectedPlayers = new ArrayList<>();
     private List<Map.Entry<String, SocketChannel>> allPlayers = new ArrayList<>();
-
-    private List<SocketChannel> waitingPlayers = new ArrayList<>();
-
-    private List<SSLSocket> waitingPlayersSSL = new ArrayList<>();
-    private PrintWriter out;
-    private BufferedReader in;
-
+    private Map<String, SSLSocket> authenticatedSSLSockets = new HashMap<>();
     private List<Game> runningGames = new ArrayList<>();
     private Lock lock = new ReentrantLock();
     private Condition playerAvailable = lock.newCondition();
     private int gameId = 1;
     private Auth auth;
+
+    private int playerPort = 8001;
 
     public static void main(String[] args) {
 
@@ -40,12 +36,14 @@ public class Server {
         int playersPerGame = Integer.parseInt(args[1]);
 
         // Start the SSL connection listener in a separate thread
-        Thread sslThread = new Thread(() -> server.sslConnection(port));
+        Thread sslThread = new Thread(() -> server.sslConnection(port, playersPerGame));
         sslThread.start();
 
         // Start the simple TCP connection handler in the main thread or another thread
-        Thread tcpThread = new Thread(() -> server.simpleConnection(port, playersPerGame));
+        Thread tcpThread = new Thread(() -> server.simpleConnection(server.playerPort, playersPerGame));
         tcpThread.start();
+
+        server.playerPort++;
 
         try {
             sslThread.join();
@@ -59,8 +57,7 @@ public class Server {
         return auth.authenticate(username, password);
     }
 
-
-    private void sslConnection(int port) {
+    private void sslConnection(int port, int playersPerGame) {
         System.setProperty("javax.net.ssl.keyStore", "assign2/src/serverKeystore.jks");
         System.setProperty("javax.net.ssl.keyStorePassword", "wordle");
 
@@ -71,9 +68,7 @@ public class Server {
 
             while (true) {
                 SSLSocket sslSocket = (SSLSocket) listener.accept();
-                out = new PrintWriter(sslSocket.getOutputStream(), true);
-                in = new BufferedReader(new InputStreamReader(sslSocket.getInputStream()));
-                Thread.startVirtualThread(() -> handleClient(sslSocket));
+                Thread.startVirtualThread(() -> handleClient(sslSocket, playersPerGame));
             }
         } catch (IOException e) {
             System.err.println("Could not start server: " + e.getMessage());
@@ -81,7 +76,7 @@ public class Server {
         }
     }
 
-    private void handleClient(SSLSocket sslSocket) {
+    private void handleClient(SSLSocket sslSocket, int playersPerGame) {
         try {
             sslSocket.startHandshake();
             System.out.println("SSL Session:");
@@ -96,10 +91,10 @@ public class Server {
                 auth = new Auth();
 
                 inputLine = in.readLine().split("\\|");
-                user = inputLine[1];
-                token = inputLine[0];
+                user = inputLine[0];
+                token = inputLine[1];
                 inputLine = in.readLine().split("\\|");
-                String password = inputLine[1];
+                String password = inputLine[0];
 
                 if (Objects.equals(token, "REGISTRATION")) {
                     System.out.println("Registering user: " + user);
@@ -110,11 +105,12 @@ public class Server {
                 if (auth.authenticate(user, password)) {
                     System.out.println("User authenticated: " + user);
                     out.println("OK");
+                    out.println("SWITCH_TO_TCP" + "|" + (playerPort));
 
-                    // Add the authenticated user to the waitingPlayers list
+                    // Add the authenticated user to the authenticatedSSLSockets map
                     lock.lock();
                     try {
-                        waitingPlayersSSL.add(sslSocket);
+                        authenticatedSSLSockets.put(user, sslSocket);
                         playerAvailable.signalAll();
                     } finally {
                         lock.unlock();
@@ -148,12 +144,25 @@ public class Server {
             while (true) {
                 lock.lock();
                 try {
-                    while (waitingPlayers.isEmpty()) {
+                    while (authenticatedSSLSockets.isEmpty()) {
                         playerAvailable.await();
                     }
-                    SSLSocket sslSocket =  waitingPlayersSSL.removeFirst();
-                    // Transition from SSL to plain TCP
-                    handleNewPlayer(sslSocket, playersPerGame, executorService);
+
+                    SocketChannel socketChannel = serverSocketChannel.accept();
+
+                    System.out.println("New client connected: " + socketChannel.isConnected());
+
+                    // Read username from the client to match with authenticated SSLSocket
+                    ByteBuffer buffer = ByteBuffer.allocate(1024);
+                    socketChannel.read(buffer);
+                    buffer.flip();
+                    String username = new String(buffer.array(), buffer.position(), buffer.limit()).trim();
+
+
+
+                    authenticatedSSLSockets.remove(username);
+
+                    handleNewPlayer(socketChannel, playersPerGame, executorService, username);
                 } finally {
                     lock.unlock();
                 }
@@ -164,46 +173,25 @@ public class Server {
         }
     }
 
-    private void handleNewPlayer(SSLSocket sslSocket, int playersPerGame, ExecutorService executorService) {
-        try (SocketChannel socketChannel = SocketChannel.open()) {
-            // Get the SSL socket's underlying socket
-            Socket underlyingSocket = sslSocket.getSession().getPeerHost() != null ? sslSocket : null;
-            if (underlyingSocket == null) {
-                throw new IOException("Unable to get the underlying socket.");
-            }
+    private void handleNewPlayer(SocketChannel socketChannel, int playersPerGame, ExecutorService executorService, String username) {
+        boolean isPlayerRejoin = true;
+        try {
 
-            socketChannel.bind(underlyingSocket.getLocalSocketAddress());
-            socketChannel.connect(new InetSocketAddress(underlyingSocket.getInetAddress(), underlyingSocket.getPort()));
-
-            boolean isPlayerRejoin = true;
-            String username = in.readLine().split("\\|")[1];
-            String[] response = in.readLine().split("\\|");
-            String password = response[1];
-            String token = response[0];
-
-            if (Objects.equals(token, "REGISTRATION")) {
-                auth.register(username, password);
-            }
-
-            if (login(username, password)) {
-                out.println("ACK" + "|" + "OK");
-
-                isPlayerRejoin = false;
-                lock.lock();
-                try {
-                    for (Map.Entry<String, SocketChannel> player : allPlayers) {
-                        if (Objects.equals(player.getKey(), username)) {
-                            player.setValue(socketChannel);
-                            isPlayerRejoin = true;
-                            break;
-                        }
+            isPlayerRejoin = false;
+            lock.lock();
+            try {
+                for (Map.Entry<String, SocketChannel> player : allPlayers) {
+                    if (Objects.equals(player.getKey(), username)) {
+                        player.setValue(socketChannel);
+                        isPlayerRejoin = true;
+                        break;
                     }
-                    if (!isPlayerRejoin) {
-                        allPlayers.add(Map.entry(username, socketChannel));
-                    }
-                } finally {
-                    lock.unlock();
                 }
+                if (!isPlayerRejoin) {
+                    allPlayers.add(Map.entry(username, socketChannel));
+                }
+            } finally {
+                lock.unlock();
             }
 
             Map.Entry<String, SocketChannel> playerEntry = null;
@@ -250,7 +238,7 @@ public class Server {
                         }
 
                         run_game(gamePlayers);
-                        System.out.println("Game #" + currentGameId + "has finished.");
+                        System.out.println("Game #" + currentGameId + " has finished.");
                     } catch (Exception ex) {
                         System.out.println("Error in running the game: " + ex.getMessage());
                         ex.printStackTrace();
@@ -258,8 +246,8 @@ public class Server {
                 });
                 connectedPlayers.clear(); // Clear the list for the next game
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+        }  catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -303,14 +291,19 @@ public class Server {
                             e.printStackTrace();
                             System.exit(1);
                         } finally {
-                            completedGuessers.add(guesser);
-                            if (completedGuessers.size() < guessers.size()) {
-                                try {
-                                    send(guesser.getValue(), "Waiting for other guesses to be submitted...", null);
-                                } catch (Exception ex) {
-                                    Thread.currentThread().interrupt();
-                                    ex.printStackTrace();
+                            lock.lock();
+                            try {
+                                completedGuessers.add(guesser);
+                                if (completedGuessers.size() < guessers.size()) {
+                                    try {
+                                        send(guesser.getValue(), "Waiting for other guesses to be submitted...", null);
+                                    } catch (Exception ex) {
+                                        Thread.currentThread().interrupt();
+                                        ex.printStackTrace();
+                                    }
                                 }
+                            } finally {
+                                lock.unlock();
                             }
                         }
                     });
@@ -345,7 +338,7 @@ public class Server {
 
     private void chooseWord(Map.Entry<String, SocketChannel> roundLeader, Game game, List<Map.Entry<String, SocketChannel>> guessers) throws Exception {
         for (Map.Entry<String, SocketChannel> guesser : guessers) {
-            send(guesser.getValue(), roundLeader + " is choosing the word!\n", null);
+            send(guesser.getValue(), roundLeader.getKey() + " is choosing the word!\n", null);
         }
 
         String message = "You're this round captain! Choose a word: ";
@@ -373,7 +366,7 @@ public class Server {
         String responseString = "";
         while (true) {
             try {
-                SocketChannel socket = game.getSocket(roundLeader.getKey());
+                SocketChannel socket = game.getSocket(player.getKey());
                 send(socket, message, "REPLY");
                 responseString = receive(socket)[1];
                 if (responseString == null) {
@@ -385,7 +378,7 @@ public class Server {
                 } else if (!responseString.matches("[a-zA-Z]+")) {
                     send(socket, "Your word can only contain letters!", null);
                 } else {
-                    send(socket, socket + " guessed the word " + responseString + "!", null);
+                    send(socket, player.getKey() + " guessed the word " + responseString + "!", null);
                     return responseString;
                 }
             } catch (Exception e) {
@@ -402,9 +395,9 @@ public class Server {
         StringBuilder leaderboard = new StringBuilder("Leaderboard:\n");
         int rank = 1;
         for (Map.Entry<Map.Entry<String, SocketChannel>, Integer> entry : entryList) {
-            Map.Entry<String, SocketChannel> socket = entry.getKey();
+            Map.Entry<String, SocketChannel> name = entry.getKey();
             Integer score = entry.getValue();
-            leaderboard.append(rank).append(". Socket: ").append(socket).append(", Score: ").append(score).append("\n");
+            leaderboard.append(rank).append(". Socket: ").append(name.getKey()).append(", Score: ").append(score).append("\n");
             rank++;
         }
 
@@ -437,8 +430,10 @@ public class Server {
         int bytesRead = socket.read(buffer);
         String response = new String(buffer.array(), 0, bytesRead);
         if (response.contains("|")) {
+
             return response.split("\\|");
         } else {
+
             return new String[]{null, response};
         }
     }

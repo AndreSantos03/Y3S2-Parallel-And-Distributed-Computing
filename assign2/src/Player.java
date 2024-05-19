@@ -1,37 +1,27 @@
 import java.io.*;
 import java.net.*;
-import java.nio.channels.SocketChannel;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-
+import java.nio.channels.SocketChannel;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
-
-
-
-
-
 public class Player {
-
 
     private static final int CONNECTION_ATTEMPTS = 5;
     private static final int CONNECTION_TIMEOUT_SEC = 5;
 
-
-    private final int port;
+    private int port;
     private final String host;
     private SocketChannel socket;
 
-    private SSLSocket sslSocket; //socket for server authentication
+    private SSLSocket sslSocket; // socket for server authentication
     private PrintWriter out;
     private BufferedReader in;
     BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
 
-
     private String username;
     private String password;
-    
+
     // ANSI escape code for yellow color
     String yellowColor = "\u001B[33m";
     // ANSI escape code for green color
@@ -48,10 +38,9 @@ public class Player {
     // Red square
     String redSquare = redColor + "█" + resetColor;
 
-    public Player(int port, String host){
+    public Player(int port, String host) {
         this.port = port;
         this.host = host;
-
     }
 
     private SSLSocket connectSSL() throws IOException {
@@ -78,102 +67,93 @@ public class Player {
         return sslSocket;
     }
 
-    private void connect() throws IOException{
+    private void connect() throws IOException {
         this.socket = SocketChannel.open();
         this.socket.connect(new InetSocketAddress(this.host, this.port));
     }
 
-    public void send(String message,String token) throws Exception {
+    public void send(String message, String token) throws Exception {
         String sentMessage;
-        if(token != null){
+        if (token != null) {
             sentMessage = token + "|" + message;
-        }
-        else{
+        } else {
             sentMessage = message;
         }
-                ByteBuffer buffer = ByteBuffer.allocate(1024);      
-        buffer.clear();                                     
-        buffer.put(sentMessage.getBytes());                    
-        buffer.flip();                                   
-        while (buffer.hasRemaining()) {                     
+        ByteBuffer buffer = ByteBuffer.allocate(1024);
+        buffer.clear();
+        buffer.put(sentMessage.getBytes());
+        buffer.flip();
+        while (buffer.hasRemaining()) {
             socket.write(buffer);
         }
     }
 
-    //returns the String and the token
+    // returns the String and the token
     public String[] receive() throws Exception {
-            ByteBuffer buffer = ByteBuffer.allocate(1024);        
-            int bytesRead = socket.read(buffer);    
-            String response = new String(buffer.array(), 0, bytesRead);
+        ByteBuffer buffer = ByteBuffer.allocate(1024);
+        int bytesRead = socket.read(buffer);
+        String response = new String(buffer.array(), 0, bytesRead);
 
+        // replace with the ansi squares
+        response = response
+                .replace("red", redSquare)
+                .replace("green", greenSquare)
+                .replace("yellow", yellowSquare);
 
-            //replace with the ansi squares
-            response = response
-            .replace("red", redSquare)
-            .replace("green", greenSquare)
-            .replace("yellow", yellowSquare);
-
-            if(response.contains("|")){
-                String[] parts = response.split("\\|");
-                return parts;
-            }
-            else
-            {
-                String[] result = new String[2];
-                result[0] = null;
-                result[1] = response;
-                return result;        
-            }
+        if (response.contains("|")) {
+            String[] parts = response.split("\\|");
+            return parts;
+        } else {
+            String[] result = new String[2];
+            result[0] = null;
+            result[1] = response;
+            return result;
+        }
     }
 
-
-    private void gameStart(Player player){
+    private void gameStart() {
         int connectionCounter = 1;
+        System.out.println("Game is starting!");
         BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
-        //waiting for connection
-        try{
-            while(true){
-                try{
+        // waiting for connection
+        try {
+            while (true) {
+                try {
                     System.out.println("Connection attempt number #" + connectionCounter);
-
-                    //player.connect();
-
-                    System.out.println("Connected to server: " + player.socket.getRemoteAddress() + "!");
+                    System.out.println("Connected to server: " + socket.getRemoteAddress() + "!");
                     break;
-                }
-                catch ( IOException e){
+                } catch (IOException e) {
                     connectionCounter++;
-                    if(connectionCounter > CONNECTION_ATTEMPTS){
+                    if (connectionCounter > CONNECTION_ATTEMPTS) {
                         System.out.println("Exceeded connection attempts to the server!");
                         System.exit(0);
                     }
                     System.out.println("Connection attempt failed. Retrying...");
-                    Thread.sleep(player.CONNECTION_TIMEOUT_SEC * 1000); //pass it to mili
+                    Thread.sleep(CONNECTION_TIMEOUT_SEC * 1000); // pass it to milli
                 }
             }
 
-            while(true){
+            while (true) {
                 String message;
                 String token;
 
-                String[] serverResponse = player.receive();
+                String[] serverResponse = receive();
                 message = serverResponse[1];
                 token = serverResponse[0];
-                
-                //If there's a token
-                if(token != null){
-                    if(token.contains("REPLY")){
+
+                // If there's a token
+                if (token != null) {
+                    if (token.contains("REPLY")) {
+                        System.out.println(message);
                         System.out.print("Send to server: ");
                         message = consoleReader.readLine();
-                        player.send(message,null);
+                        send(message, null);
                     }
-                }
-                else{
+                } else {
                     System.out.println(message);
                 }
-
             }
-        } catch (Exception e){
+        } catch (Exception e) {
             System.out.println("Exception: " + e.getMessage());
             e.printStackTrace();
         }
@@ -202,11 +182,11 @@ public class Player {
             System.out.print("Password: ");
             password = consoleReader.readLine();
 
-            out.println(username+"|"+token);
-            out.println(password+"|"+token);
+            out.println(username + "|" + token);
+            out.println(password + "|" + token);
 
             String[] response = in.readLine().split("\\|");
-            if ("OK".equals(response[1])) {
+            if ("OK".equals(response[0])) {
                 responded = true;
                 System.out.println("Authentication successful.");
             } else {
@@ -214,11 +194,6 @@ public class Player {
             }
         }
     }
-
-    public void startGame() throws IOException {
-        connect();
-    }
-
 
     public static void main(String[] args) {
         if (args.length < 2) {
@@ -235,8 +210,28 @@ public class Player {
         while (attempt < CONNECTION_ATTEMPTS) {
             try {
                 player.connectSSL();
+                System.out.println("Trying to connect to register/login...");
                 player.performLoginOrRegister();
-                player.gameStart(player);
+                System.out.println("Done with SSL and registration/login. Beginning SocketChannel TCP connection");
+
+                String[] switchMessage = player.in.readLine().split("\\|");
+                String message = switchMessage[0];
+                String portTCP = switchMessage[1];
+                // Close the SSL connection
+                player.sslSocket.close();
+
+                // Wait for server instruction to switch to TCP
+
+                if ("SWITCH_TO_TCP".equals(message)) {
+                    player.port = Integer.parseInt(portTCP);
+                    player.connect();
+                    System.out.println("Connected to server: " + player.getSocket().getRemoteAddress() + "!");
+
+                    // Send username to the server to match the authenticated session
+                    player.send(player.getUsername(), null);
+
+                    player.gameStart();
+                }
                 break;
             } catch (IOException e) {
                 System.err.println("Connection attempt " + (attempt + 1) + " failed: " + e.getMessage());
@@ -250,15 +245,17 @@ public class Player {
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                 }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
         }
     }
-    public String getUsername () {
+
+    public String getUsername() {
         return username;
     }
 
-    public SocketChannel getSocket ()
-    {
+    public SocketChannel getSocket() {
         return socket;
     }
 }
