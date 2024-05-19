@@ -107,24 +107,18 @@ public class Game {
         }
     }
 
-    public void updatePlayer(Map.Entry<String, SocketChannel> newplayer)
-    {
-        for (Map.Entry<String, SocketChannel> player : userSockets)
-        {
-            if (player.getKey() == newplayer.getKey())
-            {
+    public void updatePlayer(Map.Entry<String, SocketChannel> newplayer) {
+        for (Map.Entry<String, SocketChannel> player : userSockets) {
+            if (player.getKey() == newplayer.getKey()) {
                 player.setValue(newplayer.getValue());
                 return;
             }
         }
     }
 
-    public SocketChannel getSocket(String username)
-    {
-        for (Map.Entry<String, SocketChannel> player : userSockets)
-        {
-            if (player.getKey() == username)
-            {
+    public SocketChannel getSocket(String username){
+        for (Map.Entry<String, SocketChannel> player : userSockets) {
+            if (player.getKey() == username) {
                 return player.getValue();
             }
         }

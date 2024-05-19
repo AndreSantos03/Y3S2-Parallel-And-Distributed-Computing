@@ -12,17 +12,30 @@ import java.util.concurrent.locks.*;
 
 public class Server {
 
-    private List<Map.Entry<String, SocketChannel>> connectedPlayers = new ArrayList<>();
-    private List<Map.Entry<String, SocketChannel>> allPlayers = new ArrayList<>();
-    private Map<String, SSLSocket> authenticatedSSLSockets = new HashMap<>();
+    // Main server variables
     private List<Game> runningGames = new ArrayList<>();
     private Lock lock = new ReentrantLock();
     private Condition playerAvailable = lock.newCondition();
     private int gameId = 1;
     private Auth auth;
 
-    private int playerPort = 8001;
+    // SSL conections
+    private Map<String, SSLSocket> authenticatedSSLSockets = new HashMap<>();
 
+    // Ranked mode
+    private ReentrantLock waiting_queue_lock; // Lock for queue
+    private List<User> waiting_queue;
+    private Boolean isRanked = false;
+    private RankedQueue rankedQueue;
+
+    // TCP connections
+    private int playerPort = 8001;
+    private List<Map.Entry<String, SocketChannel>> connectedPlayers = new ArrayList<>();
+    private List<Map.Entry<String, SocketChannel>> allPlayers = new ArrayList<>();
+
+    public Server(int playersPerGame, int initialMaxLevelDifference, int initialWaitTime) {
+        this.rankedQueue = new RankedQueue(playersPerGame, initialMaxLevelDifference, initialWaitTime);
+    }
     public static void main(String[] args) {
 
         if (args.length < 2) {
@@ -30,10 +43,25 @@ public class Server {
             return;
         }
 
-        Server server = new Server();
+        System.out.println("Which mode are you starting the server? (Ranked/Unranked)");
 
         int port = Integer.parseInt(args[0]);
         int playersPerGame = Integer.parseInt(args[1]);
+
+        Server server = new Server(playersPerGame,2, 10000);
+
+        try{
+            BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
+            var executorService = Executors.newVirtualThreadPerTaskExecutor();
+            String mode = consoleReader.readLine();
+            if(mode.equals("Ranked")){
+                System.out.println("Ranked mode selected");
+                server.isRanked = true;
+                server.rankedQueue.startMatchmaking(executorService, server);
+            }
+        }catch (IOException e){
+            System.out.println("Error reading mode");
+        }
 
         // Start the SSL connection listener in a separate thread
         Thread sslThread = new Thread(() -> server.sslConnection(port, playersPerGame));
@@ -213,34 +241,69 @@ public class Server {
                     lock.unlock();
                 }
             }
-
-            if (connectedPlayers.size() >= playersPerGame) {
-                List<Map.Entry<String, SocketChannel>> gamePlayers = new ArrayList<>();
-                int currentGameId = gameId++; // Assign the current game ID
-
-                System.out.println("Starting Game #" + currentGameId + " with " + connectedPlayers.size() + " players:");
-                for (Map.Entry<String, SocketChannel> player : connectedPlayers) {
-                    gamePlayers.add(player);
-                    System.out.println("- Player: " + player.getKey());
-                }
-
-                executorService.submit(() -> {
-                    try {
-                        for (Map.Entry<String, SocketChannel> player : gamePlayers) {
-                            send(player.getValue(), "Game #" + currentGameId + " has started!\n", null);
-                        }
-
-                        run_game(gamePlayers);
-                        System.out.println("Game #" + currentGameId + " has finished.");
-                    } catch (Exception ex) {
-                        System.out.println("Error in running the game: " + ex.getMessage());
-                        ex.printStackTrace();
-                    }
-                });
-                connectedPlayers.clear(); // Clear the list for the next game
+            int level = auth.getUser(username).getLevel();
+            rankedQueue.addPlayer(username, socketChannel, level);
+            // if ranked isn't on start the simple queue
+            if(!isRanked){
+                simpleMode(playersPerGame,executorService);
             }
+
         }  catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public void rankedMode(List<RankedQueue.UserEntry> team, ExecutorService executorService) {
+
+        List<Map.Entry<String, SocketChannel>> gamePlayers = new ArrayList<>();
+        for (RankedQueue.UserEntry entry : team) {
+            gamePlayers.add(Map.entry(entry.getUsername(), entry.getSocket()));
+        }
+
+        int currentGameId = gameId++;
+        System.out.println("Starting Game #" + currentGameId + " with " + gamePlayers.size() + " players:");
+
+        executorService.submit(() -> {
+            try {
+                for (Map.Entry<String, SocketChannel> player : gamePlayers) {
+                    send(player.getValue(), "Game #" + currentGameId + " has started!\n", null);
+                }
+
+                run_game(gamePlayers);
+                System.out.println("Game #" + currentGameId + " has finished.");
+            } catch (Exception ex) {
+                System.out.println("Error in running the game: " + ex.getMessage());
+                ex.printStackTrace();
+            }
+        });
+    }
+
+    private void simpleMode(int playersPerGame, ExecutorService executorService){
+        if (connectedPlayers.size() >= playersPerGame) {
+
+            List<Map.Entry<String, SocketChannel>> gamePlayers = new ArrayList<>();
+            int currentGameId = gameId++; // Assign the current game ID
+
+            System.out.println("Starting Game #" + currentGameId + " with " + connectedPlayers.size() + " players:");
+            for (Map.Entry<String, SocketChannel> player : connectedPlayers) {
+                gamePlayers.add(player);
+                System.out.println("- Player: " + player.getKey());
+            }
+
+            executorService.submit(() -> {
+                try {
+                    for (Map.Entry<String, SocketChannel> player : gamePlayers) {
+                        send(player.getValue(), "Game #" + currentGameId + " has started!\n", null);
+                    }
+
+                    run_game(gamePlayers);
+                    System.out.println("Game #" + currentGameId + " has finished.");
+                } catch (Exception ex) {
+                    System.out.println("Error in running the game: " + ex.getMessage());
+                    ex.printStackTrace();
+                }
+            });
+            connectedPlayers.clear(); // Clear the list for the next game
         }
     }
 
@@ -313,7 +376,7 @@ public class Server {
 
                 if (!winners.isEmpty()) {
                     game.setRoundResults(winners);
-                    for (var player : connectedPlayers) {
+                    for (var player : players) {
                         if (winners.contains(player)) {
                             send(player.getValue(), "Congratulations! You guessed the word!", null);
                         } else {
@@ -331,9 +394,10 @@ public class Server {
         // Notify players that the game is over
         for (Map.Entry<String, SocketChannel> player : players) {
             send(player.getValue(), "Game over. Thank you for playing!", "OVER");
-
+            auth.updateUserLevels(game);
             player.getValue().close(); // Close the connection
         }
+        runningGames.remove(game);
 
     }
 
@@ -442,4 +506,7 @@ public class Server {
             return new String[]{null, response};
         }
     }
+
+
+
 }
