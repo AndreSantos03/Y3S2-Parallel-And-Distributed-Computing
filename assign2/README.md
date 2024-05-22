@@ -16,7 +16,7 @@ Implemented in Java 21 using multithreading.
 
 ## How to run
 
-With Java 21, run ``javac Server.java Game.java Player.java``
+With Java 21, run ``javac Auth.java  RankedQueue.java Server.java Game.java Player.java``
 
 On the server run ``java Server {PORT} {NUMBER OF PLAYERS}``
 
